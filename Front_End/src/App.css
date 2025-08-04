@@ -1,0 +1,40 @@
+/* src/App.css */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  color: #111827; /* Gray-900 */
+}
+
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background-color: #1e3a8a; /* Tailwind blue-900 */
+  color: white;
+  padding: 1rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+footer {
+  background-color: #1f2937; /* Tailwind gray-800 */
+  color: white;
+  padding: 1rem;
+  margin-top: auto;
+  text-align: center;
+}
+
+button {
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  filter: brightness(0.95);
+}

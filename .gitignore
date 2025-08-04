@@ -1,0 +1,11 @@
+Frontend/node_modules
+
+__pycache__/
+*.py[cod]
+*.pyo   
+
+*.pyd
+*.env
+*.pem
+*.zip
+Front_End/node_modules
