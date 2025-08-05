@@ -6,6 +6,6 @@ __pycache__/
 
 *.pyd
 *.env
-*.pem
 *.zip
 Front_End/node_modules
+frontend_intranet/node_modules
