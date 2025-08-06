@@ -22,7 +22,8 @@ class UserService:
             result.append({
                 "user_id": user['user_id'],
                 "name": full_name,
-                "roles": role_names
+                "roles": role_names,
+                "mail": user['mail']
             })
         return result
  
