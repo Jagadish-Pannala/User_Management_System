@@ -57,7 +57,7 @@ class Permission_Group_Mapping(Base):
 
 # ----------------------- AccessPoint Table -----------------------
 class AccessPoint(Base):
-    __tablename__ = "access_point"
+    __tablename__ = "Access_Point"
 
     access_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     endpoint_path = Column(String(255), nullable=False)
@@ -69,7 +69,7 @@ class AccessPoint(Base):
 
 # ----------------------- AccessPointPermission Mapping -----------------------
 class AccessPointPermission(Base):
-    __tablename__ = "access_point_permission_mapping"
+    __tablename__ = "Access_Point_Permission_Mapping"
     
     id = Column(Integer, primary_key=True, index=True)
     access_id = Column(Integer, ForeignKey("access_point.access_id"))
