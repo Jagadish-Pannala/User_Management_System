@@ -72,7 +72,7 @@ class AccessPointPermission(Base):
     __tablename__ = "Access_Point_Permission_Mapping"
     
     id = Column(Integer, primary_key=True, index=True)
-    access_id = Column(Integer, ForeignKey("access_point.access_id"))
+    access_id = Column(Integer, ForeignKey("Access_Point.access_id"))
     permission_id = Column(Integer, ForeignKey("Permissions.permission_id"))  # Use ID instead of code
     
     access_point = relationship("AccessPoint", back_populates="permission_mappings")
