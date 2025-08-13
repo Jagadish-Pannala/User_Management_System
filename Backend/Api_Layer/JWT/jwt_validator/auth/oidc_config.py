@@ -2,6 +2,9 @@
 
 import requests
 from jwt import algorithms
+from Backend.config.env_loader import get_env_var
+
+ISSUER = get_env_var("ISSUER")
 
 class OIDCValidator:
     def __init__(self, config_url: str):
@@ -32,5 +35,5 @@ _oidc_validator = None
 def get_oidc_validator():
     global _oidc_validator
     if _oidc_validator is None:
-        _oidc_validator = OIDCValidator("http://localhost:8000/.well-known/openid-configuration")
+        _oidc_validator = OIDCValidator(f"{ISSUER}/.well-known/openid-configuration")
     return _oidc_validator

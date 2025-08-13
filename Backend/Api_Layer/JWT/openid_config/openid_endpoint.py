@@ -2,14 +2,14 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 import json
 from pathlib import Path
-
+from Backend.config.env_loader import get_env_var
 router = APIRouter()
 
 # Static path to JWKS file
 JWKS_PATH = Path(__file__).resolve().parent.parent / "token_creation" / "jwks.json"
 
 # Replace with your actual domain name or environment variable
-ISSUER = "http://localhost:8000"
+ISSUER = get_env_var("ISSUER")
 
 @router.get("/.well-known/jwks.json")
 def serve_jwks():
