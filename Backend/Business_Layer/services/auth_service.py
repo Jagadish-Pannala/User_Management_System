@@ -13,6 +13,7 @@ from ...config.env_loader import get_env_var
 
 
 
+
 class AuthService:
     """
     Handles business logic and internally manages DB session.
@@ -46,10 +47,12 @@ class AuthService:
     def login_user(self, credentials: LoginUser):
         dao = self._get_dao()
 
+        validate_email_format(credentials.email)
         user = dao.get_active_user_by_email(credentials.email)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive")
-
+        
+        validate_password_strength(credentials.password)
         verify_password(credentials.password, user.password)
 
         roles = dao.get_user_roles(user.user_id)
@@ -161,6 +164,7 @@ class AuthService:
         dao = self._get_dao()
 
         # 1. Check user exists
+        validate_email_format(forgot_data.email)
         user = dao.get_user_by_email(forgot_data.email)
         if not user:
             raise HTTPException(
@@ -178,6 +182,7 @@ class AuthService:
 
         dao.delete_otp(otp_record)
 
+        validate_password_strength(forgot_data.new_password)
         # 3. Hash new password
         hashed_pw = hash_password(forgot_data.new_password)
 
@@ -194,6 +199,7 @@ class AuthService:
     def check_user_exists(self, email: str):
         dao = self._get_dao()
 
+        validate_email_format(email)
         user = dao.get_user_by_email(email)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found with this email")

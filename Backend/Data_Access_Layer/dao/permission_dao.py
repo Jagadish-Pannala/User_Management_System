@@ -31,7 +31,7 @@ class PermissionDAO:
         self.db.refresh(permission)
         return permission
 
-    def delete(self, permission):
+    def delete(self, permission:models.Permissions):
         self.db.delete(permission)
         self.db.commit()
 

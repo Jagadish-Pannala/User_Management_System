@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException,status
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.permission_dao import PermissionDAO
 from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
@@ -59,8 +59,26 @@ class PermissionService:
     def delete_permission(self, permission_id: int):
         permission = self.dao.get_by_id(permission_id)
         if not permission:
-            raise HTTPException(status_code=404, detail="Permission not found")
-        self.dao.delete(permission)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Permission with ID {permission_id} not found"
+            )
+
+        try:
+            # Manually clear relationships to avoid FK constraint errors
+            permission.access_mappings.clear()
+            permission.permission_groups.clear()
+
+            self.dao.delete(permission)
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete permission: {str(e)}"
+            )
+
+        return {"message": f"Permission with ID {permission_id} deleted successfully"}
+
 
     def delete_permission_cascade(self, permission_id: int):
         if not self.dao.get_by_id(permission_id):

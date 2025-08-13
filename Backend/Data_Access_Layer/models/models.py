@@ -9,7 +9,12 @@ class Role(Base):
     role_name = Column(String(100), nullable=False)
 
     users = relationship("User", secondary="User_Role", back_populates="roles")
-    permission_groups = relationship("Permission_Group", secondary="Role_Permission_Group")
+    permission_groups = relationship(
+        "Permission_Group",
+        secondary="Role_Permission_Group",
+        back_populates="roles",
+        cascade="all"
+    )
 
 # ----------------------- User Table -----------------------
 class User(Base):
@@ -37,8 +42,18 @@ class Permissions(Base):
     permission_code = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
 
-    access_mappings = relationship("AccessPointPermission", back_populates="permission")
-    permission_groups = relationship("Permission_Group", secondary="Permission_Group_Mapping")
+    access_mappings = relationship(
+        "AccessPointPermission",
+        back_populates="permission",
+        cascade="all, delete-orphan"
+    )
+
+    permission_groups = relationship(
+        "Permission_Group",
+        secondary="Permission_Group_Mapping",
+        back_populates="permissions",
+        cascade="all"  # ensures mapping rows are deleted
+    )
 
 # ----------------------- Permission Group -----------------------
 class Permission_Group(Base):
@@ -46,8 +61,19 @@ class Permission_Group(Base):
     group_id = Column(Integer, primary_key=True, index=True)
     group_name = Column(String(100), unique=True, nullable=False)
 
-    permissions = relationship("Permissions", secondary="Permission_Group_Mapping")
-    roles = relationship("Role", secondary="Role_Permission_Group")
+    permissions = relationship(
+        "Permissions",
+        secondary="Permission_Group_Mapping",
+        back_populates="permission_groups",
+        cascade="all"
+    )
+
+    roles = relationship(
+        "Role",
+        secondary="Role_Permission_Group",
+        back_populates="permission_groups",
+        cascade="all"
+    )
 
 # ----------------------- Permission Group Mapping -----------------------
 class Permission_Group_Mapping(Base):

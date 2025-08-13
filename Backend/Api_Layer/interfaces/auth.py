@@ -11,16 +11,16 @@ class RegisterUser(BaseModel):
     )
     password: str = Field(
         ..., 
-        min_length=6, 
+        min_length=8, 
         description="Password must be at least 6 characters long"
     )
 
 class LoginUser(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=6)
+    email: str
+    password: str
 
 class ForgotPassword(BaseModel):
-    email: EmailStr
+    email: str
     otp: str
-    new_password: str = Field(..., min_length=6)
+    new_password: str
 

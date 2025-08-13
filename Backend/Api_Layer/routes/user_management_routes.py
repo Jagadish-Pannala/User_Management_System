@@ -5,6 +5,7 @@ from ..JWT.jwt_validator.auth.dependencies import get_current_user, admin_requir
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
 
+
 router = APIRouter()
 
 # Injecting the service with DB session
