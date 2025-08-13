@@ -3,10 +3,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 
-
 def validate_email_format(email: str):
     """Validate the format of the email using regex."""
-    email_regex = r'^[\w\.-]+@[\w\.-]+\.\w{2,4}$'
+    email_regex = r'^[\w\.-]+@[\w\.-]+\.\w{2,}$'  # more flexible TLD length
     if not re.match(email_regex, email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -54,4 +53,29 @@ def validate_password_strength(password: str):
         )
 
 
+def validate_contact_number(contact: str):
+    """
+    Validate contact number:
+    - Allows optional '+' prefix
+    - 7 to 15 digits
+    """
+    contact_regex = r'^\+?\d{7,15}$'
+    if not re.match(contact_regex, contact):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid contact number format"
+        )
 
+
+def validate_name(name: str):
+    """
+    Validate name:
+    - Allows letters, spaces, hyphens, apostrophes
+    - No digits or special symbols
+    """
+    name_regex = r"^[A-Za-zÀ-ÖØ-öø-ÿ' -]+$"
+    if not re.match(name_regex, name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid name format. Only letters, spaces, hyphens, and apostrophes are allowed."
+        )

@@ -40,7 +40,6 @@ def ms_login():
  
     return RedirectResponse(url=microsoft_auth_url)
  
-used_codes = set()
  
 @router.get("/callback")
 def handle_microsoft_callback(code: str):

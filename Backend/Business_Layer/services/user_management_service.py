@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Data_Access_Layer.models import models
 from ...Data_Access_Layer.utils.database import SessionLocal
-from ..utils.password_utils import hash_password
+from ..utils.password_utils import hash_password,verify_password,check_password_match
+from ..utils.input_validators import validate_email_format,validate_password_strength,validate_name,validate_contact_number
  
  
 class UserService:
@@ -35,7 +36,7 @@ class UserService:
         if existing:
             raise ValueError("User already exists")
  
-        hashed_password = hash_password(user_schema.password)
+        hashed_password = user_schema.password
         new_user = models.User(
             first_name=user_schema.first_name,
             last_name=user_schema.last_name,
@@ -64,18 +65,35 @@ class UserService:
         user = self.dao.get_user_by_id(user_id)
         if not user:
             raise ValueError("User not found")
- 
+
+        # Validations
+        validate_email_format(user_schema.mail)
+        validate_name(user_schema.first_name)
+        validate_name(user_schema.last_name)
+        validate_contact_number(user_schema.contact)
+
         updated_data = {
             "first_name": user_schema.first_name,
             "last_name": user_schema.last_name,
             "mail": user_schema.mail,
             "contact": user_schema.contact,
             "is_active": user_schema.is_active,
-            "password": hash_password(user_schema.password)
         }
- 
+
+        # Password update handling
+        if user_schema.password:
+            if not check_password_match(user_schema.password, user.password.strip()):
+                # New password
+                validate_password_strength(user_schema.password)
+                updated_data["password"] = hash_password(user_schema.password)
+            else:
+                # Password unchanged
+                updated_data["password"] = user.password
+        else:
+            updated_data["password"] = user.password
+
+
         success = self.dao.update_user(user, updated_data)
- 
         if success:
             return self.dao.get_user_by_id(user_id)
         else:

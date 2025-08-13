@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from ..interfaces.otp_interface import OTPRequest, OTPValidateRequest
 from ...Business_Layer.services.otp_service import send_otp_service, validate_otp_service
 
+
 router = APIRouter()
 
 @router.post("/send-otp")
