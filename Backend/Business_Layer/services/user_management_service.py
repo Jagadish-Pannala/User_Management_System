@@ -35,7 +35,13 @@ class UserService:
         existing = self.dao.get_user_by_email(user_schema.mail)
         if existing:
             raise ValueError("User already exists")
- 
+
+        validate_email_format(user_schema.mail)
+        validate_name(user_schema.first_name)
+        validate_name(user_schema.last_name)
+        validate_contact_number(user_schema.contact)
+        validate_password_strength(user_schema.password)
+        
         hashed_password = user_schema.password
         new_user = models.User(
             first_name=user_schema.first_name,
