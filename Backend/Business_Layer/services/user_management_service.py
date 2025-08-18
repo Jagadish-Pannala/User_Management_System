@@ -42,7 +42,7 @@ class UserService:
         validate_contact_number(user_schema.contact)
         validate_password_strength(user_schema.password)
         
-        hashed_password = user_schema.password
+        hashed_password = hash_password(user_schema.password)
         new_user = models.User(
             first_name=user_schema.first_name,
             last_name=user_schema.last_name,
