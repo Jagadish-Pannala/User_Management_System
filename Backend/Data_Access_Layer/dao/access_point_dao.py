@@ -20,6 +20,10 @@ class AccessPointDAO:
         self.db.commit()
         self.db.refresh(access_point)
         return access_point
+    
+    def get_by_endpoint_path(self, endpoint_path: str):
+        return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path).first()
+
 
     def get_access_point_by_path_and_method(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
         return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()

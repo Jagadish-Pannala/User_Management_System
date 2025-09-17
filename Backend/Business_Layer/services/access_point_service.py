@@ -4,6 +4,7 @@ from ...Data_Access_Layer.dao.access_point_dao import AccessPointDAO
 from ...Api_Layer.interfaces.access_point import AccessPointCreate, AccessPointUpdate, AccessPointOut
 from typing import List
 from ...Data_Access_Layer.utils.dependency import SessionLocal
+from sqlalchemy.exc import IntegrityError
 
 
 class AccessPointService:
@@ -11,9 +12,38 @@ class AccessPointService:
         self.db: Session = db or SessionLocal()
         self.dao = AccessPointDAO(self.db)
 
+    # def create_access_point(self, data: AccessPointCreate):
+    #     ap_dict = data.dict(exclude_unset=True)
+    #     access_point = self.dao.create_access_point(**ap_dict)
+    #     return {
+    #         "access_id": access_point.access_id,
+    #         "message": "Access point created successfully"
+    #     }
+
     def create_access_point(self, data: AccessPointCreate):
         ap_dict = data.dict(exclude_unset=True)
-        access_point = self.dao.create_access_point(**ap_dict)
+        
+        # Optional: additional logical validations
+        existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Access point with this name already exists"
+            )
+        
+        try:
+            access_point = self.dao.create_access_point(**ap_dict)
+        except IntegrityError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid data or constraint violation"
+            ) from e
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create access point"
+            ) from e
+
         return {
             "access_id": access_point.access_id,
             "message": "Access point created successfully"
@@ -62,12 +92,55 @@ class AccessPointService:
     def list_modules(self) -> List[str]:
         return self.dao.get_distinct_modules()
 
+    # def update(self, access_id: int, data: AccessPointUpdate):
+    #     update_dict = data.dict(exclude_unset=True)
+    #     updated_ap = self.dao.update_access_point(access_id, **update_dict)
+
+    #     if not updated_ap:
+    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
+
+    #     return AccessPointOut(
+    #         access_id=updated_ap.access_id,
+    #         endpoint_path=updated_ap.endpoint_path,
+    #         method=updated_ap.method,
+    #         module=updated_ap.module,
+    #         is_public=updated_ap.is_public,
+    #         permission_id=updated_ap.permission_mappings[0].permission_id if updated_ap.permission_mappings else None
+    #     )
+
     def update(self, access_id: int, data: AccessPointUpdate):
         update_dict = data.dict(exclude_unset=True)
+
+        # --- Check for duplicate endpoint before updating ---
+        if 'endpoint_path' in update_dict or 'method' in update_dict:
+            # Fetch the current record
+            current_ap = self.dao.get_access_point_by_id(access_id)
+            if not current_ap:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Access point not found"
+                )
+
+            # Use new values if present, else old values
+            new_endpoint = update_dict.get('endpoint_path', current_ap.endpoint_path)
+            new_method = update_dict.get('method', current_ap.method)
+
+            # Check if another access point already has same endpoint+method
+            existing = self.dao.get_access_point_by_path_and_method(new_endpoint, new_method)
+            if existing and existing.access_id != access_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Another access point with this endpoint and method already exists"
+                )
+
+        # --- Proceed with update ---
         updated_ap = self.dao.update_access_point(access_id, **update_dict)
 
         if not updated_ap:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Access point not found"
+            )
 
         return AccessPointOut(
             access_id=updated_ap.access_id,
@@ -75,8 +148,10 @@ class AccessPointService:
             method=updated_ap.method,
             module=updated_ap.module,
             is_public=updated_ap.is_public,
-            permission_id=updated_ap.permission_mappings[0].permission_id if updated_ap.permission_mappings else None
+            permission_id=updated_ap.permission_mappings[0].permission_id
+            if updated_ap.permission_mappings else None
         )
+
 
     def delete(self, access_id: int):
         success = self.dao.delete_access_point(access_id)
