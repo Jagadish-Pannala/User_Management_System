@@ -3,6 +3,7 @@ from ..utils.password_utils import hash_password
 from .base_service import BaseService
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Api_Layer.interfaces.general_user import EditProfile, EditProfileHr
+from ..utils.input_validators import validate_email_format,validate_password_strength
 
 
 class ProfileService(BaseService):
@@ -31,6 +32,8 @@ class ProfileService(BaseService):
         user = self.dao.get_user_by_email(current_user["email"])
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        validate_password_strength(profile.password)
 
         success = self.dao.update_user_profile(user, {
             "first_name": profile.first_name,

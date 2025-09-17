@@ -136,7 +136,7 @@ class UserService:
         return "Roles updated successfully"
  
     def get_user_roles(self, user_id):
-        return [r[0] for r in self.dao.get_user_roles(user_id)]
+        return [r for r in self.dao.get_user_roles(user_id)]
  
     def update_user_profile(self, user_id, profile_data):
         user = self.dao.get_user_by_id(user_id)
