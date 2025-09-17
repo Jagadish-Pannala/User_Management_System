@@ -8,14 +8,17 @@ from .Data_Access_Layer.models import models
 from .Api_Layer.routes import auth_routes, profile_routes, permission_group_route, role_management_routes, permission_routes, user_management_routes, access_point_routes, otp_routes
 from .Api_Layer.JWT.openid_config import openid_endpoint
 from .Api_Layer.JWT.jwt_validator.middleware.db_session_middleware import DBSessionMiddleware
+from .config.env_loader import get_env_var
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="User Management System")
 
+FRONTEND_URL = get_env_var("FRONTEND_URL")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
