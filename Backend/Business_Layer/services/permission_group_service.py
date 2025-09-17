@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
 from ...Data_Access_Layer.utils.dependency import SessionLocal  # SQLAlchemy session factory
+from fastapi import HTTPException, status
 
 class PermissionGroupService:
     def __init__(self, db: Session):
@@ -21,7 +22,30 @@ class PermissionGroupService:
         return self.dao.create_group(group_name)
 
     def update_group(self, group_id: int, group_name: str):
-        return self.dao.update_group(group_id, group_name)
+        # Get current group
+        current = self.dao.get_group_by_id(group_id)
+        if not current:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Group not found"
+            )
+
+        # If the name is changing, check if another group already has it
+        if current != group_name:
+            existing = self.dao.get_group_by_name(group_name)
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Group name already exists"
+                )
+
+        # Now safe to update
+        updated_group = self.dao.update_group(group_id, group_name)
+        return {
+            "message": "Group updated successfully",
+            "group": updated_group
+        }
+
 
     def delete_group(self, group_id: int):
         return self.dao.delete_group(group_id)

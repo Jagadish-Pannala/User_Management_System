@@ -78,6 +78,11 @@ class UserService:
         validate_name(user_schema.last_name)
         validate_contact_number(user_schema.contact)
 
+        if user.mail != user_schema.mail:
+            existing = self.dao.get_user_by_email(user_schema.mail)
+            if existing:
+                raise ValueError("User already exists")
+
         updated_data = {
             "first_name": user_schema.first_name,
             "last_name": user_schema.last_name,
@@ -86,25 +91,22 @@ class UserService:
             "is_active": user_schema.is_active,
         }
 
-        # Password update handling
-        if user_schema.password:
-            if not check_password_match(user_schema.password, user.password.strip()):
-                # New password
-                validate_password_strength(user_schema.password)
-                updated_data["password"] = hash_password(user_schema.password)
-            else:
-                # Password unchanged
-                updated_data["password"] = user.password
+        # Password update handling (SAFE)
+        if user_schema.password and user_schema.password.strip() != "":
+            # Assume anything provided is a NEW plain password (frontend never sends old hash)
+            # Validate and hash it
+            validate_password_strength(user_schema.password)
+            updated_data["password"] = hash_password(user_schema.password)
         else:
+            # Keep existing hashed password as-is
             updated_data["password"] = user.password
-
 
         success = self.dao.update_user(user, updated_data)
         if success:
             return self.dao.get_user_by_id(user_id)
         else:
             raise RuntimeError("User update failed")
- 
+
     def deactivate_user(self, user_id):
         user = self.dao.get_user_by_id(user_id)
         if not user:

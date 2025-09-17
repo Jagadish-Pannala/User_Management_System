@@ -1,12 +1,12 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List,Optional
 
 class UserBase(BaseModel):
     first_name: str
     last_name: str
     mail: str
     contact: str
-    password: str
+    password: Optional[str] = None
     is_active: bool = True
 
 class UserOut(UserBase):
