@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..interfaces.user_management import UserBase, UserOut, UserRoleUpdate, UserWithRoleNames
-from ..JWT.jwt_validator.auth.dependencies import get_current_user, admin_required
+from ..JWT.jwt_validator.auth.dependencies import get_current_user, check_permission, check_permission
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
 
@@ -13,19 +13,19 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db)
 
 @router.get("/")
-def admin_home(current_user: dict = Depends(admin_required)):
+def admin_home(current_user: dict = Depends(check_permission)):
     return {"message": "User Management Route"}
 
 @router.get("", response_model=list[UserOut])
 def list_users(
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.list_users()
 
 @router.get("/roles", response_model=list[UserWithRoleNames])
 def get_users_with_roles(
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_users_with_roles()
@@ -33,7 +33,7 @@ def get_users_with_roles(
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     user = user_service.get_user(user_id)
@@ -44,7 +44,7 @@ def get_user(
 @router.post("", response_model=UserOut)
 def create_user(
     user: UserBase,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -56,7 +56,7 @@ def create_user(
 def update_user(
     user_id: int,
     user: UserBase,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -67,7 +67,7 @@ def update_user(
 @router.delete("/{user_id}")
 def deactivate_user(
     user_id: int,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -80,7 +80,7 @@ def deactivate_user(
 def update_user_roles(
     user_id: int,
     payload: UserRoleUpdate,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -94,7 +94,7 @@ def update_user_roles(
 @router.get("/{user_id}/roles")
 def get_user_roles(
     user_id: int,
-    current_user: dict = Depends(admin_required),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
