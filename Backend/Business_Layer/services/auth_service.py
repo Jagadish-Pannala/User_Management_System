@@ -52,7 +52,7 @@ class AuthService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive")
         
-        validate_password_strength(credentials.password)
+        # validate_password_strength(credentials.password)
         verify_password(credentials.password, user.password)
 
         roles = dao.get_user_roles(user.user_id)
