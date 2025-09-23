@@ -59,6 +59,20 @@ class RoleService:
         return role_dao.create_role(self.db, role_data)
 
     def update_role(self, role_id: int, role_data: RoleBase):
+        role = role_dao.get_role(self.db, role_id)
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Role not found"
+            )
+
+        # protect mandatory roles
+        mandatory_roles = ["Admin", "Super Admin", "HR", "General"]
+        if role.role_name in mandatory_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role '{role.role_name}' is mandatory and cannot be renamed"
+            )
         self._check_duplicate_role(role_data.role_name, exclude_role_id=role_id)
         return role_dao.update_role(self.db, role_id, role_data)
 
