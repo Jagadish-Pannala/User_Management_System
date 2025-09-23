@@ -44,7 +44,7 @@ def check_permission(
 
     # Get all access points with same method
     rows = db.execute("""
-        SELECT ap.access_id, ap.endpoint_path, p.permission_code
+        SELECT ap.access_id, ap.endpoint_path, p.permission_code, ap.is_public
         FROM Access_Point ap
         JOIN Access_Point_Permission_Mapping apm ON ap.access_id = apm.access_id
         JOIN Permissions p ON apm.permission_id = p.permission_id
@@ -55,6 +55,7 @@ def check_permission(
     for row in rows:
         if path_matches(path, row[1]):  # row[1] = endpoint_path
             required_permission = row[2]  # row[2] = permission_code
+            is_public = row[3]  # row[3] = is_public
             print("Matched Path:", row[1], "Requires Permission:", required_permission)
             break
 
@@ -64,7 +65,8 @@ def check_permission(
             detail="Access point not registered"
         )
 
-    if required_permission not in current_user.get("permissions", []):
+
+    if required_permission not in current_user.get("permissions", []) and is_public == 1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Missing required permission: {required_permission}"
