@@ -22,6 +22,13 @@ class PermissionGroupService:
         return self.dao.create_group(group_name)
 
     def update_group(self, group_id: int, group_name: str):
+        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
+        df_group_id = default_group.group_id
+        if group_id == df_group_id :
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update the default permission group"
+            )
         # Get current group
         current = self.dao.get_group_by_id(group_id)
         if not current:
@@ -48,6 +55,13 @@ class PermissionGroupService:
 
 
     def delete_group(self, group_id: int):
+        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
+        df_group_id = default_group.group_id
+        if group_id == df_group_id :
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete the default permission group"
+            )
         group = self.dao.get_group_by_id(group_id)
         if not group:
             raise HTTPException(
