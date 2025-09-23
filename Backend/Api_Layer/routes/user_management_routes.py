@@ -25,7 +25,7 @@ def list_users(
 
 @router.get("/roles", response_model=list[UserWithRoleNames])
 def get_users_with_roles(
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_users_with_roles()
@@ -33,7 +33,7 @@ def get_users_with_roles(
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     user = user_service.get_user(user_id)
@@ -44,7 +44,7 @@ def get_user(
 @router.post("", response_model=UserOut)
 def create_user(
     user: UserBase,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -56,7 +56,7 @@ def create_user(
 def update_user(
     user_id: int,
     user: UserBase,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -67,7 +67,7 @@ def update_user(
 @router.delete("/{user_id}")
 def deactivate_user(
     user_id: int,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -80,7 +80,7 @@ def deactivate_user(
 def update_user_roles(
     user_id: int,
     payload: UserRoleUpdate,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -94,7 +94,7 @@ def update_user_roles(
 @router.get("/{user_id}/roles")
 def get_user_roles(
     user_id: int,
-    # current_user: dict = Depends(check_permission),
+    current_user: dict = Depends(check_permission),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
