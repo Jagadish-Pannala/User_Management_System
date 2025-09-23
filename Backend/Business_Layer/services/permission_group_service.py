@@ -48,10 +48,7 @@ class PermissionGroupService:
 
         # Now safe to update
         updated_group = self.dao.update_group(group_id, group_name)
-        return {
-            "message": "Group updated successfully",
-            "group": updated_group
-        }
+        return updated_group
 
 
     def delete_group(self, group_id: int):
