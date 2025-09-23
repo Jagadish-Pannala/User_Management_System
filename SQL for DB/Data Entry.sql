@@ -331,7 +331,8 @@ INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
 ('/admin/permissions/{permission_id}', 'DELETE', 'Admin - Permission Management', FALSE),
 ('/admin/permissions/{permission_id}/group', 'PUT', 'Admin - Permission Management', FALSE);
 
-
+INSERT INTO Permission_Group (group_name)
+VALUES ('newly_created_permissions_group');
 
 -- Admin - Permission Management
 
