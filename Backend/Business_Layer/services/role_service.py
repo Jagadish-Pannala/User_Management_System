@@ -1,6 +1,6 @@
-from fastapi import HTTPException
+from fastapi import HTTPException,status
 from sqlalchemy.orm import Session
-from ...Data_Access_Layer.dao import role_dao
+from ...Data_Access_Layer.dao import role_dao, user_dao
 from ...Api_Layer.interfaces.role_mangement import RoleBase, RolePermissionGroupUpdate,RoleGroupRequest
 
 class RoleService:
@@ -62,8 +62,42 @@ class RoleService:
         self._check_duplicate_role(role_data.role_name, exclude_role_id=role_id)
         return role_dao.update_role(self.db, role_id, role_data)
 
+
     def delete_role(self, role_id: int):
+        role = role_dao.get_role(self.db, role_id)
+        if not role:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Role not found"
+            )
+
+        # protect mandatory roles
+        mandatory_roles = ["Admin", "Super Admin", "HR", "General"]
+        if role.role_name in mandatory_roles:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Role '{role.role_name}' is mandatory and cannot be deleted"
+            )
+
+        # 1. Get all users who have this role
+        user_ids = role_dao.get_users_by_role(self.db, role_id)
+
+        # 2. Cleanup dependent mappings (no cascade in DB)
+        role_dao.delete_user_roles_by_role(self.db, role_id)
+        role_dao.delete_role_permission_groups(self.db, role_id)
+
+        # 3. Assign "General" role to users who now have no roles
+        general_role = role_dao.get_role_by_name(self.db, "General")
+        for user_id in user_ids:
+            user_roles = role_dao.get_user_roles(self.db, user_id)
+            if not user_roles:  # Only assign if user has zero roles left
+                role_dao.assign_role(self.db, user_id, general_role.role_id)
+
+        # 4. Finally delete the role
         return role_dao.delete_role(self.db, role_id)
+
+
+
     
 
     def update_role_permission_groups(self, role_id: int, payload: RolePermissionGroupUpdate):

@@ -159,6 +159,13 @@ class UserDAO:
         except SQLAlchemyError:
             self.db.rollback()
             raise
+    def delete_user(self, user: models.User):
+        try:
+            self.db.delete(user)
+            self.db.commit()
+        except SQLAlchemyError:
+            self.db.rollback()
+            raise
  
     def assign_role(self, user_id: int, role_id: int) -> None:
         try:
@@ -171,6 +178,11 @@ class UserDAO:
  
     def get_all_users(self) -> List[models.User]:
         return self.db.query(models.User).all()
+    
+    def get_all_active_users(self) -> List[models.User]:
+        return self.db.query(models.User).filter(
+            models.User.is_active == True
+        ).all()
  
     def get_users_with_roles(self) -> List[dict]:
         results = (

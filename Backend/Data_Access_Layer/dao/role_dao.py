@@ -34,6 +34,39 @@ def update_role(db: Session, role_id: int, role: RoleBase):
     db.refresh(role_db)
     return role_db
 
+def get_users_by_role(db: Session, role_id: int) -> list[int]:
+    results = db.query(models.User_Role.user_id).filter_by(role_id=role_id).all()
+    print("results",results)
+    return [r[0] for r in results]
+
+def delete_user_roles_by_role(db: Session, role_id: int):
+    role = get_role(db, role_id)
+    if not role:
+        raise Exception("Role not found")
+
+    # delete all user-role mappings for this role
+    db.query(models.User_Role).filter_by(role_id=role_id).delete()
+    db.commit()
+
+def delete_role_permission_groups(db: Session, role_id: int):
+    role = get_role(db, role_id)
+    if not role:
+        raise Exception("Role not found")
+
+    # delete all role-permission-group mappings for this role
+    db.query(models.Role_Permission_Group).filter_by(role_id=role_id).delete()
+    db.commit()
+
+def get_user_roles(db: Session, user_id: int) -> list[int]:
+    results = db.query(models.User_Role.role_id).filter_by(user_id=user_id).all()
+    print("results",results)
+    return [r[0] for r in results]
+
+def assign_role(db: Session, user_id: int, role_id: int):
+    db.add(models.User_Role(user_id=user_id, role_id=role_id))
+    db.commit()
+
+
 
 def delete_role(db: Session, role_id: int):
     role = get_role(db, role_id)

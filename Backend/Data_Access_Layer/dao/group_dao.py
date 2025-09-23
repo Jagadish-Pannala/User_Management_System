@@ -138,3 +138,22 @@ class PermissionGroupDAO:
  
         return query.all()
 
+    def clear_group_permissions(self, group_id: int):
+        group = self.get_group_by_id(group_id)
+        if group:
+            group.permissions.clear()  # assuming a relationship 'permissions'
+            self.db.commit()
+
+    def clear_group_roles(self, group_id: int):
+        group = self.get_group_by_id(group_id)
+        if group:
+            group.roles.clear()  # assuming a relationship 'roles'
+            self.db.commit()
+
+    def delete_group(self, group_id: int):
+        group = self.get_group_by_id(group_id)
+        if group:
+            self.db.delete(group)
+            self.db.commit()
+            return True
+        return False

@@ -3,13 +3,16 @@ from ..utils.password_utils import hash_password
 from .base_service import BaseService
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Api_Layer.interfaces.general_user import EditProfile, EditProfileHr
-from ..utils.input_validators import validate_email_format,validate_password_strength
+from ..utils.input_validators import validate_password_strength
+from ...Data_Access_Layer.utils.dependency import get_db
+from sqlalchemy.orm import Session
 
 
 class ProfileService(BaseService):
     def __init__(self):
         super().__init__()
-        self.dao = UserDAO(self.db)
+        db: Session = next(get_db()) 
+        self.dao = UserDAO(db)
 
     def get_profile(self, current_user: dict):
         user = self.dao.get_user_by_email(current_user["email"])

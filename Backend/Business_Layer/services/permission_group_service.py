@@ -48,7 +48,32 @@ class PermissionGroupService:
 
 
     def delete_group(self, group_id: int):
-        return self.dao.delete_group(group_id)
+        group = self.dao.get_group_by_id(group_id)
+        if not group:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Permission group with ID {group_id} not found"
+            )
+
+        try:
+            # Clear dependent relationships first
+            self.dao.clear_group_permissions(group_id)
+            self.dao.clear_group_roles(group_id)
+
+            # Delete the group itself
+            if not self.dao.delete_group(group_id):
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to delete permission group"
+                )
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete permission group: {str(e)}"
+            )
+
+        return {"message": f"Permission group with ID {group_id} deleted successfully"}
 
     def delete_group_cascade(self, group_id: int):
         return self.dao.delete_group_cascade(group_id)
