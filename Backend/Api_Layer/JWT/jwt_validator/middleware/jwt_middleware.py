@@ -9,7 +9,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
 
-        if any(request.url.path.startswith(path) for path in public_paths):
+        if request.method == "OPTIONS" or any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
 
         auth_header = request.headers.get("Authorization")
