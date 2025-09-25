@@ -10,7 +10,6 @@ import os
 
 ISSUER = get_env_var("ISSUER")
 
-
 class OIDCValidator:
     def __init__(self):
         self.issuer = ISSUER
