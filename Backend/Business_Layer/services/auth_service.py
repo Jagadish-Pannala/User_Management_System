@@ -69,7 +69,7 @@ class AuthService:
         }
         access_token = token_create(token_data)
 
-        redirect = "/user-management" if "Admin" in roles or "Super Admin" in roles else "/home"
+        redirect = "/user-management" if "Admin" in roles or "Super Admin" in roles else "/dashboard"
 
         return {
             "access_token": access_token,
