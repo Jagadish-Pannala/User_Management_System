@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from ..models.models import AccessPoint, AccessPointPermission, Permissions
 from typing import Optional, List
 
@@ -171,3 +172,116 @@ class AccessPointDAO:
             .filter(~Permissions.access_mappings.any())
             .all()
         )
+    def get_permissions_for_access_point(self, access_id: int) -> List[str]:
+        """
+        Get permission codes for a specific access point.
+        """
+        query = text("""
+            SELECT p.permission_code 
+            FROM Access_Point_Permission_Mapping appm
+            JOIN Permissions p ON appm.permission_id = p.permission_id
+            WHERE appm.access_id = :access_id
+        """)
+        
+        result = self.db.execute(query, {"access_id": access_id})
+        return [row[0] for row in result.fetchall()]
+    
+    # Add this debug method to your AccessPointDAO class
+
+    def get_permissions_for_access_point_debug(self, access_id: int) -> List[str]:
+        """
+        Debug version to see what's happening with permissions query.
+        """
+        print(f"\n🔍 DEBUG: Getting permissions for access_id: {access_id}")
+        
+        try:
+            # First, let's check if the access point exists
+            access_point_check = self.db.execute(
+                text("SELECT * FROM Access_Point WHERE access_id = :access_id"),
+                {"access_id": access_id}
+            ).fetchone()
+            
+            print(f"   Access Point exists: {access_point_check is not None}")
+            if access_point_check:
+                print(f"   Access Point: {dict(access_point_check)}")
+            
+            # Check mapping table
+            mapping_query = text("""
+                SELECT * FROM Access_Point_Permission_Mapping 
+                WHERE access_id = :access_id
+            """)
+            mappings = self.db.execute(mapping_query, {"access_id": access_id}).fetchall()
+            print(f"   Permission mappings found: {len(mappings)}")
+            for mapping in mappings:
+                print(f"     Mapping: {dict(mapping)}")
+            
+            # Get permissions with full query
+            query = text("""
+                SELECT p.permission_id, p.permission_code, p.permission_name
+                FROM Access_Point_Permission_Mapping appm
+                JOIN Permissions p ON appm.permission_id = p.permission_id
+                WHERE appm.access_id = :access_id
+            """)
+            
+            result = self.db.execute(query, {"access_id": access_id})
+            permissions = result.fetchall()
+            
+            print(f"   Permissions query result: {len(permissions)} permissions found")
+            permission_codes = []
+            for perm in permissions:
+                perm_dict = dict(perm)
+                print(f"     Permission: {perm_dict}")
+                permission_codes.append(perm_dict['permission_code'])
+            
+            print(f"   Final permission codes: {permission_codes}")
+            return permission_codes
+            
+        except Exception as e:
+            print(f"   ❌ Error in permissions query: {str(e)}")
+            logger.error(f"Error getting permissions for access point {access_id}: {str(e)}")
+            return []
+
+    # Also add this method to check your database data
+    def debug_database_setup(self):
+        """
+        Debug method to check your database setup
+        """
+        print("\n🔍 DEBUG: Checking database setup...")
+        
+        try:
+            # Check Access_Point table
+            access_points = self.db.execute(text("SELECT COUNT(*) as count FROM Access_Point")).fetchone()
+            print(f"   Access Points in DB: {access_points['count']}")
+            
+            # Check Permissions table
+            permissions = self.db.execute(text("SELECT COUNT(*) as count FROM Permissions")).fetchone()
+            print(f"   Permissions in DB: {permissions['count']}")
+            
+            # Check mapping table
+            mappings = self.db.execute(text("SELECT COUNT(*) as count FROM Access_Point_Permission_Mapping")).fetchone()
+            print(f"   Permission Mappings in DB: {mappings['count']}")
+            
+            # Show sample data
+            print("\n   Sample Access Points:")
+            sample_aps = self.db.execute(text("SELECT * FROM Access_Point LIMIT 3")).fetchall()
+            for ap in sample_aps:
+                print(f"     {dict(ap)}")
+                
+            print("\n   Sample Permissions:")
+            sample_perms = self.db.execute(text("SELECT * FROM Permissions LIMIT 5")).fetchall()
+            for perm in sample_perms:
+                print(f"     {dict(perm)}")
+                
+            print("\n   Sample Mappings:")
+            sample_mappings = self.db.execute(text("""
+                SELECT appm.*, ap.endpoint_path, ap.method, p.permission_code 
+                FROM Access_Point_Permission_Mapping appm
+                JOIN Access_Point ap ON appm.access_id = ap.access_id
+                JOIN Permissions p ON appm.permission_id = p.permission_id
+                LIMIT 5
+            """)).fetchall()
+            for mapping in sample_mappings:
+                print(f"     {dict(mapping)}")
+                
+        except Exception as e:
+            print(f"   ❌ Error checking database: {str(e)}")

@@ -381,7 +381,19 @@ INSERT INTO Access_Point_Permission_Mapping (access_id, permission_id) VALUES
 (39, 16);  -- VIEW_GROUP
 
 
--- Admin - User Management
+-- Access Point Management (Super Admin only)
+INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
+('/admin/access-points/modules', 'GET', 'Access Points', 0),
+('/admin/access-points/unmapped-access-points', 'GET', 'Access Points', 0),
+('/admin/access-points/unmapped-permissions', 'GET', 'Access Points', 0),
+('/admin/access-points/', 'GET', 'Access Points', 0),
+('/admin/access-points/', 'POST', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'GET', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'PUT', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'DELETE', 'Access Points', 0),
+('/admin/access-points/{access_id}/map-permission/{permission_id}', 'POST', 'Access Points', 0),
+('/admin/access-points/{access_id}/unmap-permission/{permission_id}', 'DELETE', 'Access Points', 0),
+('/admin/access-points/access-points/{access_id}/map-permission', 'POST', 'Access Points', 0);
 
 
 
