@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from ..models.models import AccessPoint, AccessPointPermission, Permissions
 from typing import Optional, List
+import re
 
 
 class AccessPointDAO:
@@ -26,9 +27,26 @@ class AccessPointDAO:
         return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path).first()
 
 
+    # def get_access_point_by_path_and_method(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
+    #     return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
     def get_access_point_by_path_and_method(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
-        return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
-
+        # First, try exact match
+        ap = self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
+        if ap:
+            return ap
+        
+        # Then try regex match for dynamic endpoints
+        aps_with_regex = self.db.query(AccessPoint).filter(
+            AccessPoint.regex_pattern.isnot(None),
+            AccessPoint.method == method.upper()
+        ).all()
+        
+        for ap in aps_with_regex:
+            if re.match(ap.regex_pattern, endpoint_path):
+                return ap
+        
+        return None
+    
     def get_access_point_by_id(self, access_id: int) -> Optional[AccessPoint]:
         return self.db.query(AccessPoint).options(
             joinedload(AccessPoint.permission_mappings).joinedload(AccessPointPermission.permission)

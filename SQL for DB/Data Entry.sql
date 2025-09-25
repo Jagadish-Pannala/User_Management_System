@@ -442,3 +442,42 @@ INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
 --  show tables;
 --  
  select * from access_point_permission_mapping;
+
+ ALTER TABLE access_point
+ADD COLUMN regex_pattern VARCHAR(255) AFTER endpoint_path;
+select * from access_point;
+-- Auth
+UPDATE access_point SET regex_pattern = '^/auth/forgot-password/[^/]+$' WHERE access_id = 4;
+
+-- General User
+UPDATE access_point SET regex_pattern = '^/general_user/profile/[^/]+$' WHERE access_id IN (6,7);
+UPDATE access_point SET regex_pattern = '^/general_user/edit-user/[^/]+$' WHERE access_id IN (59,60);
+
+-- Admin - Users
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+$' WHERE access_id IN (13,14,15);
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+/role$' WHERE access_id = 16;
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+/roles$' WHERE access_id = 17;
+
+-- Admin - Roles
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+$' WHERE access_id IN (21,22,23);
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/groups$' WHERE access_id IN (24,62,63,64);
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/permissions$' WHERE access_id = 25;
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/groups/[^/]+$' WHERE access_id = 65;
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/available-groups$' WHERE access_id = 66;
+
+-- Admin - Permissions
+UPDATE access_point SET regex_pattern = '^/admin/permissions/[^/]+$' WHERE access_id IN (29,30,31);
+UPDATE access_point SET regex_pattern = '^/admin/permissions/[^/]+/group$' WHERE access_id = 32;
+UPDATE access_point SET regex_pattern = '^/admin/permissions/cascading/[^/]+$' WHERE access_id = 70;
+
+-- Admin - Groups
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+$' WHERE access_id IN (36,37,38);
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+/permissions$' WHERE access_id IN (39,72,73);
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+/unmapped-permissions$' WHERE access_id = 74;
+
+-- Access Points
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+$' WHERE access_id IN (45,46,47);
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/map-permission/[^/]+$' WHERE access_id = 48;
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/unmap-permission/[^/]+$' WHERE access_id = 49;
+UPDATE access_point SET regex_pattern = '^/admin/access-points/access-points/[^/]+/map-permission$' WHERE access_id = 50;
+
