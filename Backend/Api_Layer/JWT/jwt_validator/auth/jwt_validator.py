@@ -6,7 +6,9 @@ from .oidc_config import get_oidc_validator
 
 def validate_jwt_token(token: str):
     try:
+        print("Starting JWT validation...")
         validator = get_oidc_validator()
+        print("OIDC Validator fetched successfully.")
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
 

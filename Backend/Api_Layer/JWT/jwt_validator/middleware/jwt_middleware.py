@@ -7,7 +7,7 @@ from ..auth.jwt_validator import validate_jwt_token
 
 class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        public_paths = ["/", "/docs", "/redoc", "/openapi.json", "/auth"]
+        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
 
         if any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
@@ -17,9 +17,12 @@ class JWTMiddleware(BaseHTTPMiddleware):
             return JSONResponse(status_code=401, content={"detail": "Missing or invalid token"})
 
         token = auth_header.split(" ")[1]
+        print("Token received in middleware:", token)  
 
         try:
+            print("Validating JWT token...")
             decoded_token = validate_jwt_token(token)
+            print("Token is valid. User info:", decoded_token)
             request.state.user = decoded_token
             return await call_next(request)
         except Exception as e:
