@@ -397,10 +397,45 @@ INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
 
 
 
+-- Not Added Endpoints are :
+INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
+-- Login Management
+('/.well-known/jwks.json', 'GET', 'Login Management', 0),
+('/.well-known/openid-configuration', 'GET', 'Login Management', 0),
+('/auth/ms-login', 'GET', 'Login Management', 0),
+('/auth/callback', 'GET', 'Login Management', 0),
 
+-- OTP Management
+('/auth/send-otp', 'POST', 'OTP Management', 0),
+('/auth/validate-otp', 'POST', 'OTP Management', 0),
 
+-- General User Management
+('/general_user/profile', 'GET', 'General User Management', 0),
+('/general_user/profile', 'PUT', 'General User Management', 0),
+('/general_user/edit-user/{user_id}', 'GET', 'General User Management', 0),
+('/general_user/edit-user/{user_id}', 'PUT', 'General User Management', 0),
 
+-- Admin - User Management
+('/admin/users/roles', 'GET', 'Admin - User Management', 0),
 
+-- Admin - Role Management
+('/admin/roles/{role_id}/groups', 'GET', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups', 'PUT', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups', 'POST', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups/{group_id}', 'DELETE', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/available-groups', 'GET', 'Admin - Role Management', 0),
+
+-- Admin - Permission Management
+('/admin/permissions/', 'POST', 'Admin - Permission Management', 0),
+('/admin/permissions/unmapped', 'GET', 'Admin - Permission Management', 0),
+('/admin/permissions', 'POST', 'Admin - Permission Management', 0),
+('/admin/permissions/cascading/{permission_id}', 'DELETE', 'Admin - Permission Management', 0),
+
+-- Admin - Permission Group Management
+('/admin/groups/permission-groups/unmapped', 'GET', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/permissions', 'POST', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/permissions', 'DELETE', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/unmapped-permissions', 'GET', 'Admin - Permission Group Management', 0);
 
 
  
