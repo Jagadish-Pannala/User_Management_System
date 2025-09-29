@@ -90,6 +90,7 @@ class AccessPoint(Base):
     method = Column(Enum("GET", "POST", "PUT", "DELETE", name="http_method_enum"), nullable=False)
     module = Column(String(100), nullable=False)
     is_public = Column(Boolean, default=False)
+    regex_pattern = Column(String(255), nullable=True)
 
     permission_mappings = relationship("AccessPointPermission", back_populates="access_point", cascade="all, delete-orphan")
 

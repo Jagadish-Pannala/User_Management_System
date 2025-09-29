@@ -381,17 +381,103 @@ INSERT INTO Access_Point_Permission_Mapping (access_id, permission_id) VALUES
 (39, 16);  -- VIEW_GROUP
 
 
+-- Access Point Management (Super Admin only)
+INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
+('/admin/access-points/modules', 'GET', 'Access Points', 0),
+('/admin/access-points/unmapped-access-points', 'GET', 'Access Points', 0),
+('/admin/access-points/unmapped-permissions', 'GET', 'Access Points', 0),
+('/admin/access-points/', 'GET', 'Access Points', 0),
+('/admin/access-points/', 'POST', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'GET', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'PUT', 'Access Points', 0),
+('/admin/access-points/{access_id}', 'DELETE', 'Access Points', 0),
+('/admin/access-points/{access_id}/map-permission/{permission_id}', 'POST', 'Access Points', 0),
+('/admin/access-points/{access_id}/unmap-permission/{permission_id}', 'DELETE', 'Access Points', 0),
+('/admin/access-points/access-points/{access_id}/map-permission', 'POST', 'Access Points', 0);
+
+
+
+-- Not Added Endpoints are :
+INSERT INTO Access_Point (endpoint_path, method, module, is_public) VALUES
+-- Login Management
+('/.well-known/jwks.json', 'GET', 'Login Management', 0),
+('/.well-known/openid-configuration', 'GET', 'Login Management', 0),
+('/auth/ms-login', 'GET', 'Login Management', 0),
+('/auth/callback', 'GET', 'Login Management', 0),
+
+-- OTP Management
+('/auth/send-otp', 'POST', 'OTP Management', 0),
+('/auth/validate-otp', 'POST', 'OTP Management', 0),
+
+-- General User Management
+('/general_user/profile', 'GET', 'General User Management', 0),
+('/general_user/profile', 'PUT', 'General User Management', 0),
+('/general_user/edit-user/{user_id}', 'GET', 'General User Management', 0),
+('/general_user/edit-user/{user_id}', 'PUT', 'General User Management', 0),
+
 -- Admin - User Management
+('/admin/users/roles', 'GET', 'Admin - User Management', 0),
 
+-- Admin - Role Management
+('/admin/roles/{role_id}/groups', 'GET', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups', 'PUT', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups', 'POST', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/groups/{group_id}', 'DELETE', 'Admin - Role Management', 0),
+('/admin/roles/{role_id}/available-groups', 'GET', 'Admin - Role Management', 0),
 
+-- Admin - Permission Management
+('/admin/permissions/', 'POST', 'Admin - Permission Management', 0),
+('/admin/permissions/unmapped', 'GET', 'Admin - Permission Management', 0),
+('/admin/permissions', 'POST', 'Admin - Permission Management', 0),
+('/admin/permissions/cascading/{permission_id}', 'DELETE', 'Admin - Permission Management', 0),
 
-
-
-
-
+-- Admin - Permission Group Management
+('/admin/groups/permission-groups/unmapped', 'GET', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/permissions', 'POST', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/permissions', 'DELETE', 'Admin - Permission Group Management', 0),
+('/admin/groups/{group_id}/unmapped-permissions', 'GET', 'Admin - Permission Group Management', 0);
 
 
  
 --  show tables;
 --  
  select * from access_point_permission_mapping;
+
+ ALTER TABLE access_point
+ADD COLUMN regex_pattern VARCHAR(255) AFTER endpoint_path;
+select * from access_point;
+-- Auth
+UPDATE access_point SET regex_pattern = '^/auth/forgot-password/[^/]+$' WHERE access_id = 4;
+
+-- General User
+UPDATE access_point SET regex_pattern = '^/general_user/profile/[^/]+$' WHERE access_id IN (6,7);
+UPDATE access_point SET regex_pattern = '^/general_user/edit-user/[^/]+$' WHERE access_id IN (59,60);
+
+-- Admin - Users
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+$' WHERE access_id IN (13,14,15);
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+/role$' WHERE access_id = 16;
+UPDATE access_point SET regex_pattern = '^/admin/users/[^/]+/roles$' WHERE access_id = 17;
+
+-- Admin - Roles
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+$' WHERE access_id IN (21,22,23);
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/groups$' WHERE access_id IN (24,62,63,64);
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/permissions$' WHERE access_id = 25;
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/groups/[^/]+$' WHERE access_id = 65;
+UPDATE access_point SET regex_pattern = '^/admin/roles/[^/]+/available-groups$' WHERE access_id = 66;
+
+-- Admin - Permissions
+UPDATE access_point SET regex_pattern = '^/admin/permissions/[^/]+$' WHERE access_id IN (29,30,31);
+UPDATE access_point SET regex_pattern = '^/admin/permissions/[^/]+/group$' WHERE access_id = 32;
+UPDATE access_point SET regex_pattern = '^/admin/permissions/cascading/[^/]+$' WHERE access_id = 70;
+
+-- Admin - Groups
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+$' WHERE access_id IN (36,37,38);
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+/permissions$' WHERE access_id IN (39,72,73);
+UPDATE access_point SET regex_pattern = '^/admin/groups/[^/]+/unmapped-permissions$' WHERE access_id = 74;
+
+-- Access Points
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+$' WHERE access_id IN (45,46,47);
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/map-permission/[^/]+$' WHERE access_id = 48;
+UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/unmap-permission/[^/]+$' WHERE access_id = 49;
+UPDATE access_point SET regex_pattern = '^/admin/access-points/access-points/[^/]+/map-permission$' WHERE access_id = 50;
+

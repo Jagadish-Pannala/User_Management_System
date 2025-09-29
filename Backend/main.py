@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from .Api_Layer.JWT.jwt_validator.middleware.jwt_middleware import JWTMiddleware
+from .Api_Layer.JWT.jwt_validator.middleware.permission_middleware import OptimizedPermissionMiddleware
 from .Data_Access_Layer.utils.database import engine
 from .Data_Access_Layer.models import models
 from .Api_Layer.routes import auth_routes, profile_routes, permission_group_route, role_management_routes, permission_routes, user_management_routes, access_point_routes, otp_routes
@@ -24,7 +25,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.add_middleware(OptimizedPermissionMiddleware)
 app.add_middleware(JWTMiddleware)
 app.add_middleware(DBSessionMiddleware)
 

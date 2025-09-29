@@ -20,23 +20,10 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
         print("Entering Permission Middleware")
         
         # Skip permission check for public paths (FIXED - exact matches and specific patterns)
-        public_paths = ["/", "/docs", "/redoc", "/openapi.json"]
-        auth_paths = ["/auth/", "/auth/login", "/auth/register", "/auth/token"]  # Specific auth paths
-        
-        # Check for exact matches or specific auth paths (not just startswith "/auth")
-        is_public = (
-            request.url.path in public_paths or 
-            request.url.path in auth_paths or
-            request.url.path.startswith("/auth/") or
-            request.url.path.startswith("/.well-known/")
-        )
-        
-        # if is_public:
-        #     print(f"   🟢 SKIPPING: Public path ({request.url.path})")
-        #     return await call_next(request)
-        if request.url.path == "/" or \
-        request.url.path in ["/docs", "/redoc", "/openapi.json"] or \
-        request.url.path.startswith("/auth/"):
+
+        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
+
+        if request.method == "OPTIONS" or any(request.url.path.startswith(path) for path in public_paths):
             return await call_next(request)
 
         
@@ -44,14 +31,11 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
        
         # Skip if user is not authenticated (handled by JWTMiddleware)
         if not hasattr(request.state, 'user'):
-            print(f"   ⚠️  WARNING: No user in request.state - JWT middleware may not be working")
+            print("User not found ")
             return await call_next(request)
-        print("Exiting Permission Middleware - User found in state")
-        
+        print("🔴 3. Permission Middleware - ✅ USER FOUND!")
         user = request.state.user
-        print(f"   👤 User: {user.get('name')} (ID: {user.get('user_id')})")
-        print(f"   🏷️  Roles: {user.get('roles', [])}")
-        print(f"   🔑 Permissions: {user.get('permissions', [])}")
+        print(f"🔴 3. Permission Middleware - User: {user.get('name')}")
         
         try:
             # Get database session - try multiple ways
@@ -126,10 +110,11 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
             # Get user permissions from token
             user_permissions = set(user.get('permissions', []))
             user_roles = user.get('roles', [])
+            print(user_roles)
             
             # Admin bypass
-            if 'Admin' in user_roles:
-                print(f"   🟢 ACCESS GRANTED: User is Admin")
+            if 'Super Admin' in user_roles:
+                print(f"   🟢 ACCESS GRANTED: User is Super Admin")
                 return await call_next(request)
             
             # Check if user has required permissions
