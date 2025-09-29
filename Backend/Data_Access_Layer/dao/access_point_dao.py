@@ -11,9 +11,10 @@ class AccessPointDAO:
         self.db = db
 
     # ===================== AccessPoint =========================
-    def create_access_point(self, endpoint_path: str, method: str, module: str, is_public: bool = False) -> AccessPoint:
+    def create_access_point(self, endpoint_path: str, regex_pattern: str, method: str, module: str, is_public: bool = False) -> AccessPoint:
         access_point = AccessPoint(
             endpoint_path=endpoint_path,
+            regex_pattern=regex_pattern,
             method=method.upper(),
             module=module,
             is_public=is_public
