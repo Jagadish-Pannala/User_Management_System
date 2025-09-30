@@ -481,3 +481,16 @@ UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/map-permiss
 UPDATE access_point SET regex_pattern = '^/admin/access-points/[^/]+/unmap-permission/[^/]+$' WHERE access_id = 49;
 UPDATE access_point SET regex_pattern = '^/admin/access-points/access-points/[^/]+/map-permission$' WHERE access_id = 50;
 
+-- Adding Permissions
+INSERT INTO permissions (permission_code, description) VALUES
+('GET_ALL_MODULES', 'view all module'),
+('GET_UNMAPPED_ACCESS_POINTS', 'view all unmapped access points'),
+('GET_UNMAPPED_PERMISSIONS', 'view all unmapped permissions'),
+('GET_ALL_ACCESS_POINTS', 'view all access points'),
+('CREATE_ACCESS_POINT', 'create new access point'),
+('GET_ACCESS_POINT_BY_ID', 'view access point of the id that ID only'),
+('UPDATE_ACCESS_POINT_BY_ID', 'update the access of that ID only'),
+('DELETE_ACCESS_POINT_BY_ID', 'delete the access point of that ID only'),
+('MAP_ACCESSPOINT_TO_PERMISSION_BY_IDS', 'map permissions to access points'),
+('DELETE_ACCESSPOINT_PERMISSION_MAPPING', 'delete the mapping between access point and permission');
+

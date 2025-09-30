@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from ..interfaces.general_user import EditProfile, EditProfileHr
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Business_Layer.services.profile_service import ProfileService
@@ -48,4 +48,20 @@ def update_user_by_id(
     profile: EditProfileHr,
     current_user: dict = Depends(get_current_user),
 ):
-    return service.update_user_by_id(user_id, profile, current_user)
+
+    # Extract roles from current user
+    roles = [role.lower() for role in current_user.get("roles", [])]
+
+    # Condition 1: If user has 'admin' or 'super admin', allow editing any user
+    if "admin" in roles or "super admin" in roles:
+        return service.update_user_by_id(user_id, profile, current_user)
+
+    # Condition 2: Otherwise, allow only self-edit
+    if current_user["user_id"] == user_id:
+        return service.update_user_by_id(user_id, profile, current_user)
+
+    # Condition 3: Deny access
+    raise HTTPException(
+        status_code=403,
+        detail="You are not authorized to edit this profile."
+    )
