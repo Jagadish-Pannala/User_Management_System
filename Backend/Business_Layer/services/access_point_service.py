@@ -5,6 +5,7 @@ from ...Api_Layer.interfaces.access_point import AccessPointCreate, AccessPointU
 from typing import List
 from ...Data_Access_Layer.utils.dependency import SessionLocal
 from sqlalchemy.exc import IntegrityError
+import re
 
 
 class AccessPointService:
@@ -20,8 +21,23 @@ class AccessPointService:
     #         "message": "Access point created successfully"
     #     }
 
+    def normalize_endpoint(self, endpoint: str) -> str:
+        """
+        Convert endpoint with {params} into regex pattern.
+        Static endpoints are returned unchanged.
+        """
+        if "{" not in endpoint:  # static path
+            return endpoint
+
+        # Replace {param} with a named regex group (allowing digits/letters/_/-)
+        pattern = re.sub(r"\{(\w*)\}", r"([^/]+)", endpoint)
+
+        return "^" + pattern + "$"
+
     def create_access_point(self, data: AccessPointCreate):
         ap_dict = data.dict(exclude_unset=True)
+        # Normalize endpoint_path before saving
+        ap_dict["regex_pattern"] = self.normalize_endpoint(ap_dict["endpoint_path"])
         
         # Optional: additional logical validations
         existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))

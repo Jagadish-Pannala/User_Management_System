@@ -3,6 +3,7 @@ from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Data_Access_Layer.models import models
 from ...Data_Access_Layer.utils.database import SessionLocal
 from ..utils.password_utils import hash_password,verify_password,check_password_match
+from ..utils.email_utils import send_welcome_email
 from ..utils.input_validators import validate_email_format,validate_password_strength,validate_name,validate_contact_number
  
  
@@ -51,6 +52,10 @@ class UserService:
             password=hashed_password,
             is_active=user_schema.is_active
         )
+
+        send_welcome_email(user_schema.mail, user_schema.first_name, user_schema.password)
+
+
  
         # Step 1: Create user
         created_user = self.dao.create_user(new_user)
