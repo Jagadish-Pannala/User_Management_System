@@ -121,7 +121,22 @@ def update_user_roles(
     user_service: UserService = Depends(get_user_service)
 ):
     try:
-        message = user_service.update_user_roles(user_id, payload.role_ids)
+        message = user_service.update_user_roles(user_id, payload.role_ids,current_user['user_id'])
+        return {"message": message}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.put("/uuid/{user_id}/role")
+def update_user_roles(
+    user_uuid: str,
+    payload: UserRoleUpdate,
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        message = user_service.update_user_roles_uuid(user_uuid, payload.role_ids,current_user['user_id'])
         return {"message": message}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -136,5 +151,16 @@ def get_user_roles(
 ):
     try:
         return {"roles": user_service.get_user_roles(user_id)}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    
+@router.get("/uuid/{user_uuid}/roles")
+def get_user_roles(
+    user_uuid: str,
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        return {"roles": user_service.get_user_roles_by_uuid(user_uuid)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

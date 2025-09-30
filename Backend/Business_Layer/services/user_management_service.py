@@ -177,31 +177,34 @@ class UserService:
             raise ValueError("User not found")
         self.dao.deactivate_user(user)
  
-    def update_user_roles(self, user_id, role_ids):
-        user = self.dao.get_user_by_id(user_id)
+    def update_user_roles_uuid(self, user_uuid, role_ids, updated_by_user_id: int):
+        user = self.dao.get_user_by_uuid(user_uuid)
         if not user:
             raise ValueError("User not found")
  
         if not user.is_active:
             raise ValueError("Cannot update roles for inactive user")
  
-        self.dao.clear_roles(user_id)
+        self.dao.clear_roles(user.user_id)
  
         if not role_ids:
             general_role = self.db.query(models.Role).filter_by(role_name="General").first()
             if not general_role:
                 raise RuntimeError("'General' role not found")
-            self.dao.assign_role(user_id, general_role.role_id)
+            self.dao.assign_role(user.user_id, general_role.role_id)
             return "No roles provided. Assigned 'General' role."
  
         for role_id in role_ids:
-            self.dao.assign_role(user_id, role_id)
+            self.dao.assign_role(user.user_id, role_id,updated_by_user_id)
  
         return "Roles updated successfully"
  
     def get_user_roles(self, user_id):
         return [r for r in self.dao.get_user_roles(user_id)]
- 
+    
+    def  get_user_roles_by_uuid(self, user_id):
+        return [r for r in self.dao.get_user_roles_by_uuid(user_id)]
+    
     def update_user_profile(self, user_id, profile_data):
         user = self.dao.get_user_by_id(user_id)
         if not user:

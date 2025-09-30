@@ -164,6 +164,11 @@ class UserDAO:
             .join(models.User_Role)\
             .filter(models.User_Role.user_id == user_id).all()
         return [role[0] for role in roles]
+    
+    def get_user_roles_by_uuid(self, user_uuid: str) -> List[str]:
+        user = self.get_user_by_uuid(user_uuid)
+
+        return self.get_user_roles(user.user_id) if user else []
  
     def get_user_permissions(self, user_id: int) -> List[str]:
         permissions = self.db.query(models.Permission.permission_name)\
@@ -189,9 +194,10 @@ class UserDAO:
             self.db.rollback()
             raise
  
-    def assign_role(self, user_id: int, role_id: int) -> None:
+    def assign_role(self, user_id: int, role_id: int,updated_by_user_id) -> None:
         try:
-            new_assignment = models.User_Role(user_id=user_id, role_id=role_id)
+            now = datetime.utcnow()
+            new_assignment = models.User_Role(user_id=user_id, role_id=role_id,assigned_by=updated_by_user_id, assigned_at=now)
             self.db.add(new_assignment)
             self.db.commit()
         except SQLAlchemyError:

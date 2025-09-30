@@ -45,8 +45,7 @@ class AccessPointService:
         
         
         existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))
-        print("Existing access point check:", existing.method)
-        print(existing.method.upper() == ap_dict["method"].upper())
+
         if existing and existing.method.upper() == ap_dict["method"].upper():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
