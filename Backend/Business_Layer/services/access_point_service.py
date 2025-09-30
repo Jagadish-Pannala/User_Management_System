@@ -6,6 +6,7 @@ from typing import List
 from ...Data_Access_Layer.utils.dependency import SessionLocal
 from sqlalchemy.exc import IntegrityError
 import re
+from ..utils.generate_uuid7 import generate_uuid7
 
 
 class AccessPointService:
@@ -34,22 +35,28 @@ class AccessPointService:
 
         return "^" + pattern + "$"
 
-    def create_access_point(self, data: AccessPointCreate):
+    def create_access_point(self, data: AccessPointCreate, created_by_user_id: int):
         ap_dict = data.dict(exclude_unset=True)
+        
         # Normalize endpoint_path before saving
         ap_dict["regex_pattern"] = self.normalize_endpoint(ap_dict["endpoint_path"])
+        ap_dict["created_by"] = created_by_user_id
+        ap_dict["access_uuid"] = generate_uuid7()  
         
-        # Optional: additional logical validations
+        
         existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))
-        if existing:
+        print("Existing access point check:", existing.method)
+        print(existing.method.upper() == ap_dict["method"].upper())
+        if existing and existing.method.upper() == ap_dict["method"].upper():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Access point with this name already exists"
+                detail=f"Access point with this endpoint_path AND method '{ap_dict['method']}' already exists"
             )
         
         try:
             access_point = self.dao.create_access_point(**ap_dict)
         except IntegrityError as e:
+            print("IntegrityError details:", e.orig) 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid data or constraint violation"

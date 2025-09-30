@@ -4,6 +4,7 @@ from ..models import models
 from typing import Optional
 from ..models.otp import OTP
 from datetime import datetime
+from fastapi import HTTPException
 
 
 class AuthDAO:
@@ -24,6 +25,16 @@ class AuthDAO:
             models.User.mail == email,
             models.User.is_active == True
         ).first()
+    
+    def update_last_login(self, user_id: int, ip: str):
+        user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        user.last_login_at = datetime.utcnow()
+        user.last_login_ip = ip
+        print(f"Updated last login for user_id {user_id} to {user.last_login_at} from IP {ip}")
+        self.db.commit()
 
     def create_user(self, user_data, hashed_password: str) -> models.User:
         new_user = models.User(
@@ -47,6 +58,17 @@ class AuthDAO:
         except SQLAlchemyError:
             self.db.rollback()
             return False
+    
+    def password_last_updated(self, user_id: int) -> None:
+        user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        now = datetime.utcnow()
+        user.password_last_updated = now
+        user.updated_at = now
+        self.db.commit()
+        self.db.refresh(user)
 
     def update_user_password_by_mail(self, user_mail: str, new_hashed_password: str) -> bool:
         user = self.db.query(models.User).filter(models.User.mail == user_mail).first()

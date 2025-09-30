@@ -1,4 +1,4 @@
-from fastapi import APIRouter,HTTPException
+from fastapi import APIRouter,HTTPException, Request
 from fastapi.responses import RedirectResponse
 from ..interfaces.auth import RegisterUser, LoginUser, ForgotPassword
 from ...Business_Layer.services.auth_service import AuthService
@@ -17,8 +17,9 @@ def register(user_data: RegisterUser):
 
 
 @router.post("/login")
-def login(credentials: LoginUser):
-    return auth_service.login_user(credentials)
+def login(credentials: LoginUser,request: Request = None):
+    client_ip = auth_service.get_client_ip(request)
+    return auth_service.login_user(credentials,client_ip)
 
 @router.get("/ms-login")
 def ms_login():
@@ -42,10 +43,11 @@ def ms_login():
  
  
 @router.get("/callback")
-def handle_microsoft_callback(code: str):
+def handle_microsoft_callback(code: str,request: Request = None):
     try:
         print("Received code:", code)
-        return auth_service.handle_microsoft_callback(code)
+        client_ip = auth_service.get_client_ip(request)
+        return auth_service.handle_microsoft_callback(code,client_ip)
     except HTTPException as http_exc:
         print("HTTPException:", http_exc.status_code, http_exc.detail)
         raise http_exc

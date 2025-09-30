@@ -3,6 +3,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_, not_
 from ..models import models
 from typing import Optional, List
+from fastapi import HTTPException
+from datetime import datetime
  
  
 class UserDAO:
@@ -20,12 +22,28 @@ class UserDAO:
  
     def get_user_by_id(self, user_id: int) -> Optional[models.User]:
         return self.db.query(models.User).filter_by(user_id=user_id).first()
- 
+    
+    def get_user_by_uuid(self, user_uuid: str) -> Optional[models.User]:
+        return self.db.query(models.User).filter_by(user_uuid=user_uuid).first()
+    
+    def password_last_updated(self, user_id: int) -> None:
+        user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        now = datetime.utcnow()
+        user.password_last_updated = now
+        user.updated_at = now
+        self.db.commit()
+        self.db.refresh(user)
  
     def update_user(self, user: models.User, data: dict) -> bool:
         try:
             for field, value in data.items():
                 setattr(user, field, value)
+            
+            now = datetime.utcnow()
+            user.updated_at = now
             self.db.commit()
             self.db.refresh(user)
             return True
@@ -35,6 +53,8 @@ class UserDAO:
  
     def update_user_profile(self, user, update_data: dict) -> bool:
         try:
+            now = datetime.utcnow()
+            user.updated_at = now
             for key, value in update_data.items():
                 if hasattr(user, key):
                     setattr(user, key, value)
@@ -48,6 +68,8 @@ class UserDAO:
  
     def deactivate_user(self, user: models.User) -> None:
         try:
+            now = datetime.utcnow()
+            user.updated_at = now
             user.is_active = False
             self.db.commit()
         except SQLAlchemyError:
@@ -217,6 +239,16 @@ class UserDAO:
  
     def create_user(self, user: models.User) -> models.User:
         try:
+            # Set timestamps manually in UTC
+            now = datetime.utcnow()
+            if not hasattr(user, "created_at") or user.created_at is None:
+                user.created_at = now
+            user.updated_at = now
+
+            # Optional: if creating password at the same time
+            if hasattr(user, "password_last_updated") and user.password is not None:
+                user.password_last_updated = now
+
             self.db.add(user)
             self.db.commit()
             self.db.refresh(user)
@@ -225,13 +257,18 @@ class UserDAO:
             self.db.rollback()
             raise
  
-    def map_user_role(self, user_id: int, role_id: int):
+    def map_user_role(self, user_id: int, role_id: int, created_by_user_id: int) -> None:
         try:
             self.db.execute(
-                models.User_Role.__table__.insert().values(user_id=user_id, role_id=role_id)
+                models.User_Role.__table__.insert().values(
+                    user_id=user_id,
+                    role_id=role_id,
+                    assigned_by=created_by_user_id # who created mapping
+                    # assigned_at will auto default to CURRENT_TIMESTAMP
+                )
             )
             self.db.commit()
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             self.db.rollback()
-            raise
+            raise e
  

@@ -47,7 +47,8 @@ class ProfileService(BaseService):
 
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update profile")
-
+        
+        self.dao.password_last_updated(user.user_id)
         return {"message": "Profile updated successfully"}
 
     def search_users(self, query: str, current_user: dict):

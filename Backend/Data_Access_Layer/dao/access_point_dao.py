@@ -4,6 +4,7 @@ from sqlalchemy import text
 from ..models.models import AccessPoint, AccessPointPermission, Permissions
 from typing import Optional, List
 import re
+from datetime import datetime
 
 
 class AccessPointDAO:
@@ -11,13 +12,15 @@ class AccessPointDAO:
         self.db = db
 
     # ===================== AccessPoint =========================
-    def create_access_point(self, endpoint_path: str, regex_pattern: str, method: str, module: str, is_public: bool = False) -> AccessPoint:
+    def create_access_point(self, endpoint_path: str,created_by: int,access_uuid:str, regex_pattern: str, method: str, module: str, is_public: bool = False,) -> AccessPoint:
         access_point = AccessPoint(
             endpoint_path=endpoint_path,
             regex_pattern=regex_pattern,
             method=method.upper(),
             module=module,
-            is_public=is_public
+            is_public=is_public,
+            created_by=created_by,
+            access_uuid=access_uuid
         )
         self.db.add(access_point)
         self.db.commit()

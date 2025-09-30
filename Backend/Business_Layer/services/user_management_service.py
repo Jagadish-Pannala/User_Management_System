@@ -5,6 +5,7 @@ from ...Data_Access_Layer.utils.database import SessionLocal
 from ..utils.password_utils import hash_password,verify_password,check_password_match
 from ..utils.email_utils import send_welcome_email
 from ..utils.input_validators import validate_email_format,validate_password_strength,validate_name,validate_contact_number
+from ..utils.generate_uuid7 import generate_uuid7
  
  
 class UserService:
@@ -29,10 +30,13 @@ class UserService:
             })
         return result
  
+    def get_user_uuid(self, user_uuid):
+        return self.dao.get_user_by_uuid(user_uuid)
+    
     def get_user(self, user_id):
         return self.dao.get_user_by_id(user_id)
  
-    def create_user(self, user_schema):
+    def create_user(self, user_schema, created_by_user_id: int):
         existing = self.dao.get_user_by_email(user_schema.mail)
         if existing:
             raise ValueError("User already exists")
@@ -45,6 +49,7 @@ class UserService:
         
         hashed_password = hash_password(user_schema.password)
         new_user = models.User(
+            user_uuid=generate_uuid7(),
             first_name=user_schema.first_name,
             last_name=user_schema.last_name,
             mail=user_schema.mail,
@@ -66,11 +71,54 @@ class UserService:
             raise ValueError("Role 'General' not found")
  
         # Step 3: Map user to role
-        self.dao.map_user_role(created_user.user_id, general_role.role_id)
+        self.dao.map_user_role(created_user.user_id, general_role.role_id,created_by_user_id)
  
         return created_user
  
- 
+    def update_user_uuid(self, user_uuid, user_schema):
+        user = self.dao.get_user_by_uuid(user_uuid)
+        if not user:
+            raise ValueError("User not found")
+
+        # Validations
+        validate_email_format(user_schema.mail)
+        validate_name(user_schema.first_name)
+        validate_name(user_schema.last_name)
+        validate_contact_number(user_schema.contact)
+
+        if user.mail != user_schema.mail:
+            existing = self.dao.get_user_by_email(user_schema.mail)
+            if existing:
+                raise ValueError("User already exists")
+
+        updated_data = {
+            "first_name": user_schema.first_name,
+            "last_name": user_schema.last_name,
+            "mail": user_schema.mail,
+            "contact": user_schema.contact,
+            "is_active": user_schema.is_active,
+        }
+
+        password_changed = False
+        # Password update handling (SAFE)
+        if user_schema.password and user_schema.password.strip() != "":
+            # Assume anything provided is a NEW plain password (frontend never sends old hash)
+            # Validate and hash it
+            validate_password_strength(user_schema.password)
+
+            updated_data["password"] = hash_password(user_schema.password)
+            password_changed = True
+        else:
+            # Keep existing hashed password as-is
+            updated_data["password"] = user.password
+
+        success = self.dao.update_user(user, updated_data)
+        if success:
+            if password_changed:
+                self.dao.password_last_updated(user.user_id)
+            return self.dao.get_user_by_id(user.user_id)
+        else:
+            raise RuntimeError("User update failed")
  
     def update_user(self, user_id, user_schema):
         user = self.dao.get_user_by_id(user_id)
@@ -96,24 +144,35 @@ class UserService:
             "is_active": user_schema.is_active,
         }
 
+        password_changed = False
         # Password update handling (SAFE)
         if user_schema.password and user_schema.password.strip() != "":
             # Assume anything provided is a NEW plain password (frontend never sends old hash)
             # Validate and hash it
             validate_password_strength(user_schema.password)
+
             updated_data["password"] = hash_password(user_schema.password)
+            password_changed = True
         else:
             # Keep existing hashed password as-is
             updated_data["password"] = user.password
 
         success = self.dao.update_user(user, updated_data)
         if success:
+            if password_changed:
+                self.dao.password_last_updated(user_id)
             return self.dao.get_user_by_id(user_id)
         else:
             raise RuntimeError("User update failed")
 
     def deactivate_user(self, user_id):
         user = self.dao.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+        self.dao.deactivate_user(user)
+
+    def deactivate_user_uuid(self, user_uuid):
+        user = self.dao.get_user_by_uuid(user_uuid)
         if not user:
             raise ValueError("User not found")
         self.dao.deactivate_user(user)

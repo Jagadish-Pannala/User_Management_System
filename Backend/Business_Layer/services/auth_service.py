@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
 import requests
 import jwt
 from jwt import PyJWKClient
@@ -26,6 +26,19 @@ class AuthService:
     def _get_dao(self) -> AuthDAO:
         db: Session = next(get_db())  # Internal DB session management
         return AuthDAO(db)
+    
+    def get_client_ip(self,request: Request):
+        """
+        Safely get client IP considering trusted proxy headers.
+        """
+        x_forwarded_for = request.headers.get("X-Forwarded-For")
+        if x_forwarded_for:
+            # X-Forwarded-For may contain multiple IPs, first is original client
+            ip = x_forwarded_for.split(",")[0].strip()
+        else:
+            ip = request.client.host
+        print("Client IP:", ip)
+        return ip
 
     def register_user(self, user_data: RegisterUser):
         dao = self._get_dao()
@@ -44,13 +57,14 @@ class AuthService:
 
         return {"msg": "User registered successfully", "user_id": created_user.user_id}
 
-    def login_user(self, credentials: LoginUser):
+    def login_user(self, credentials: LoginUser, client_ip: str):
         dao = self._get_dao()
 
         validate_email_format(credentials.email)
         user = dao.get_active_user_by_email(credentials.email)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive")
+        
         
         # validate_password_strength(credentials.password)
         verify_password(credentials.password, user.password)
@@ -69,15 +83,16 @@ class AuthService:
         }
         access_token = token_create(token_data)
 
-        redirect = "/user-management" if "Admin" in roles or "Super Admin" in roles else "/dashboard"
-
+        redirect = "/dashboard"
+         
+        dao.update_last_login(user.user_id, client_ip)
         return {
             "access_token": access_token,
             "token_type": "bearer",
             "redirect": redirect
         }
     
-    def handle_microsoft_callback(self, code: str):
+    def handle_microsoft_callback(self, code: str,client_ip):
         print("1. Received code:", code)
  
         token_url = f"https://login.microsoftonline.com/{get_env_var('TENANT_ID')}/oauth2/v2.0/token"
@@ -136,7 +151,7 @@ class AuthService:
         user = dao.get_active_user_by_email(email)
         if not user:
             raise HTTPException(status_code=404, detail="User not found or inactive")
- 
+        
         roles = dao.get_user_roles(user.user_id)
         group_ids = dao.get_permission_group_ids_for_user(user.user_id)
         permissions = dao.get_permissions_by_group_ids(group_ids)
@@ -152,7 +167,8 @@ class AuthService:
  
         access_token = token_create(token_data)
         redirect = "/user-management" if "Admin" in roles or "Super Admin" in roles else "/home"
- 
+
+        dao.update_last_login(user.user_id, client_ip)
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -171,6 +187,7 @@ class AuthService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found with given email"
             )
+        
 
         # 2. Validate OTP
         otp_record = dao.get_valid_otp(forgot_data.email, forgot_data.otp)
@@ -192,7 +209,7 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update password"
             )
-
+        dao.password_last_updated(user.user_id)
         return {"message": "Password updated and user activated"}
 
 

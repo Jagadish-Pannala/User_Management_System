@@ -44,10 +44,10 @@ def get_unmapped_permissions(
 @router.post("/", response_model=CreateAPResponse)
 def create_ap(
     data: AccessPointCreate,
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.create_access_point(data)
+    return service.create_access_point(data,created_by_user_id=current_user['user_id'])
 
 
 @router.get("/", response_model=List[AccessPointOut])
