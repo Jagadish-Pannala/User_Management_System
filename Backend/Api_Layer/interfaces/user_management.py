@@ -34,7 +34,7 @@ class UserOut_uuid(UserBase):
     class Config:
        from_attributes = True
 class UserRoleUpdate(BaseModel):
-    role_ids: list[int]
+    role_ids: list[str]
 
 
 class UserWithRoleNames(BaseModel):

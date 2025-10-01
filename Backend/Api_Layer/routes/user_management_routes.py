@@ -128,7 +128,7 @@ def update_user_roles(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.put("/uuid/{user_id}/role")
+@router.put("/uuid/{user_uuid}/role")
 def update_user_roles(
     user_uuid: str,
     payload: UserRoleUpdate,

@@ -194,10 +194,13 @@ class UserDAO:
             self.db.rollback()
             raise
  
-    def assign_role(self, user_id: int, role_id: int,updated_by_user_id) -> None:
+    def assign_role(self, user_id: int, role_uuid: int,updated_by_user_id) -> None:
         try:
             now = datetime.utcnow()
-            new_assignment = models.User_Role(user_id=user_id, role_id=role_id,assigned_by=updated_by_user_id, assigned_at=now)
+            role_ids = self.db.query(models.Role.role_id).filter_by(role_uuid=role_uuid).first()
+            if not role_ids:
+                raise ValueError(f"Role with UUID {role_uuid} not found")
+            new_assignment = models.User_Role(user_id=user_id, role_id=role_ids[0],assigned_by=updated_by_user_id, assigned_at=now)
             self.db.add(new_assignment)
             self.db.commit()
         except SQLAlchemyError:
