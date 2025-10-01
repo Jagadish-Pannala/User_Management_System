@@ -191,7 +191,7 @@ class UserService:
             general_role = self.db.query(models.Role).filter_by(role_name="General").first()
             if not general_role:
                 raise RuntimeError("'General' role not found")
-            self.dao.assign_role(user.user_id, general_role.role_id)
+            self.dao.assign_role_uuid(user.user_id, general_role.role_uuid,updated_by_user_id)
             return "No roles provided. Assigned 'General' role."
  
         for role_id in role_uuids:
