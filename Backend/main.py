@@ -29,6 +29,15 @@ app.add_middleware(OptimizedPermissionMiddleware)
 app.add_middleware(JWTMiddleware)
 app.add_middleware(DBSessionMiddleware)
 
+# 🔑 Add CORS last so it wraps *all* responses
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
