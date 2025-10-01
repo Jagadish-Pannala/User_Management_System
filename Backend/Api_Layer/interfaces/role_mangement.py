@@ -5,7 +5,7 @@ class RoleBase(BaseModel):
     role_name: str
 
 class RoleOut(RoleBase):
-    role_id: int
+    role_uuid: str
     class Config:
         from_attributes = True
 

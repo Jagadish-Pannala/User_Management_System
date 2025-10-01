@@ -34,6 +34,14 @@ def get_role(
 ):
     return service.get_role_by_id(role_id)
 
+@router.get("/uuid/{role_uuid}", response_model=RoleOut)
+def get_role_by_uuid(
+    role_uuid: str,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.get_role_by_uuid(role_uuid)
+
 @router.post("", response_model=RoleOut)
 def create_role(
     role: RoleBase,
@@ -50,6 +58,14 @@ def update_role(
     current_user: dict = Depends(get_current_user)
 ):
     return service.update_role(role_id, role)
+@router.put("/uuid/{role_uuid}", response_model=RoleOut)
+def update_role_by_uuid(
+    role_uuid: str,
+    role: RoleBase,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.update_role_by_uuid(role_uuid, role)
 
 @router.delete("/{role_id}")
 def delete_role(
@@ -58,6 +74,14 @@ def delete_role(
     current_user: dict = Depends(get_current_user)
 ):
     return service.delete_role(role_id)
+
+@router.delete("/uuid/{role_uuid}")
+def delete_role_by_uuid(
+    role_uuid: str,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.delete_role_by_uuid(role_uuid)
 
 
 # --- Permission Group Management for Roles ---

@@ -12,6 +12,9 @@ def get_all_roles(db: Session):
 def get_role(db: Session, role_id: int):
     return db.query(models.Role).filter(models.Role.role_id == role_id).first()
 
+def get_role_by_uuid(db: Session, role_uuid: str):
+    return db.query(models.Role).filter(models.Role.role_uuid == role_uuid).first()
+
 
 def get_role_by_name(db: Session, name: str):
     return db.query(models.Role).filter(models.Role.role_name == name).first()
@@ -27,6 +30,14 @@ def create_role(db: Session, role: RoleBase):
 
 def update_role(db: Session, role_id: int, role: RoleBase):
     role_db = get_role(db, role_id)
+    if not role_db:
+        raise Exception("Role not found")
+    role_db.role_name = role.role_name
+    db.commit()
+    db.refresh(role_db)
+    return role_db
+def update_role_by_uuid(db: Session, role_uuid: str, role: RoleBase):
+    role_db = get_role_by_uuid(db, role_uuid)
     if not role_db:
         raise Exception("Role not found")
     role_db.role_name = role.role_name
