@@ -38,7 +38,7 @@ class UserRoleUpdate(BaseModel):
 
 
 class UserWithRoleNames(BaseModel):
-    user_id: int
+    user_uuid: str
     name: str  # e.g., "John Doe"
     roles: List[str]  # Only role names
     mail: str

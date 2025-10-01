@@ -23,7 +23,7 @@ class UserService:
             full_name = f"{user['first_name']} {user['last_name']}"
             role_names = [role for role in user['roles']]
             result.append({
-                "user_id": user['user_id'],
+                "user_uuid": user['user_uuid'],
                 "name": full_name,
                 "roles": role_names,
                 "mail": user['mail']
@@ -195,7 +195,29 @@ class UserService:
             return "No roles provided. Assigned 'General' role."
  
         for role_id in role_uuids:
-            self.dao.assign_role(user.user_id, role_id,updated_by_user_id)
+            self.dao.assign_role_uuid(user.user_id, role_id,updated_by_user_id)
+ 
+        return "Roles updated successfully"
+    
+    def update_user_roles(self, user_id, role_ids, updated_by_user_id: int):
+        user = self.dao.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+ 
+        if not user.is_active:
+            raise ValueError("Cannot update roles for inactive user")
+ 
+        self.dao.clear_roles(user.user_id)
+ 
+        if not role_ids:
+            general_role = self.db.query(models.Role).filter_by(role_name="General").first()
+            if not general_role:
+                raise RuntimeError("'General' role not found")
+            self.dao.assign_role(user.user_id, general_role.role_id)
+            return "No roles provided. Assigned 'General' role."
+ 
+        for role_id in role_ids:
+            self.dao.assign_role(user.user_id, int(role_id),updated_by_user_id)
  
         return "Roles updated successfully"
  
