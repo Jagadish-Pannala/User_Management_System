@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List
-from ..interfaces.permissiongroup import GroupBase, GroupOut, PermissionInGroupwithId
+from ..interfaces.permissiongroup import GroupBase, GroupOut, PermissionInGroupwithId,GroupIn
 from ...Business_Layer.services.permission_group_service import PermissionGroupService
 from ...Business_Layer.utils.permission_check import permission_required
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
@@ -39,13 +39,13 @@ def list_groups(
     return service.list_groups()
 
 
-@router.get("/{group_id}", response_model=GroupOut)
+@router.get("/{group_uuid}", response_model=GroupOut)
 def get_group(
-    group_id: int,
+    group_uuid: str,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    group = service.get_group(group_id)
+    group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     return group
@@ -53,93 +53,93 @@ def get_group(
 
 @router.post("", response_model=GroupOut, status_code=201)
 def create_group(
-    group: GroupBase,
+    group: GroupIn,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        return service.create_group(group.group_name)
+        return service.create_group(group.group_name,current_user['user_id'])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.put("/{group_id}", response_model=GroupOut)
+@router.put("/{group_uuid}", response_model=GroupOut)
 def update_group(
-    group_id: int,
-    group: GroupBase,
+    group_uuid: str,
+    group: GroupIn,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    updated = service.update_group(group_id, group.group_name)
+    updated = service.update_group(group_uuid, group.group_name)
     if not updated:
         raise HTTPException(status_code=404, detail="Group not found")
     return updated
 
 
-@router.delete("/{group_id}", status_code=204)
+@router.delete("/{group_uuid}", status_code=204)
 def delete_group(
-    group_id: int,
+    group_uuid: str,
     cascade: bool = Query(default=False, description="Delete group and its mappings"),
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    deleted = service.delete_group_cascade(group_id) if cascade else service.delete_group(group_id)
+    deleted = service.delete_group_cascade(group_uuid) if cascade else service.delete_group(group_uuid)
     if not deleted:
         raise HTTPException(status_code=404, detail="Group not found")
 
 
-@router.get("/{group_id}/permissions", response_model=List[PermissionInGroupwithId])
+@router.get("/{group_uuid}/permissions", response_model=List[PermissionInGroupwithId])
 def get_permissions_in_group(
-    group_id: int,
+    group_uuid: str,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    group = service.get_group(group_id)
+    group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Permission group not found")
 
-    return service.list_permissions_in_group(group_id)
+    return service.list_permissions_in_group(group_uuid)
 
 
 
 
-@router.post("/{group_id}/permissions", response_model=List[PermissionOut])
+@router.post("/{group_uuid}/permissions", response_model=List[PermissionOut])
 def add_permissions_to_group(
-    group_id: int,
-    permission_ids: List[int],
+    group_uuid: str,
+    permission_uuids: List[str],
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        return service.add_permissions_to_group(group_id, permission_ids)
+        return service.add_permissions_to_group(group_uuid, permission_uuids)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 
 
-@router.delete("/{group_id}/permissions", status_code=200)
+@router.delete("/{group_uuid}/permissions", status_code=200)
 def remove_permissions_from_group(
-    group_id: int,
-    permission_ids: List[int],  # query param or body
+    group_uuid: str,
+    permission_uuids: List[str],  # query param or body
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    removed = service.remove_permissions_from_group(group_id, permission_ids)
+    removed = service.remove_permissions_from_group(group_uuid, permission_uuids)
     if not removed:
         raise HTTPException(status_code=404, detail="No matching permission mappings found.")
     
     return {"message": "Permissions removed successfully"}
 
-@router.get("/{group_id}/unmapped-permissions", response_model=List[PermissionOut])
+@router.get("/{group_uuid}/unmapped-permissions", response_model=List[PermissionOut])
 def get_unmapped_permissions_for_group(
-    group_id: int,
+    group_uuid: str,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    group = service.get_group(group_id)
+    group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
  
-    return service.get_unmapped_permissions(group_id)
+    return service.get_unmapped_permissions(group.group_id)
 

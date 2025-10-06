@@ -25,7 +25,7 @@ class PermissionCreateU(PermissionBase):
     pass
 
 class PermissionGroupUpdate(BaseModel):
-    group_uuid: int
+    group_uuid: str
 
 class HTTPMethod(str, Enum):
     GET = "GET"
