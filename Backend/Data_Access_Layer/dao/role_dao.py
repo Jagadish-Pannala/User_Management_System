@@ -3,6 +3,8 @@ from sqlalchemy import exists
 from ..models import models
 from ...Api_Layer.interfaces.role_mangement import RoleBase
 from fastapi import HTTPException
+from uuid import UUID
+from datetime import datetime
 
 
 def get_all_roles(db: Session):
@@ -20,8 +22,9 @@ def get_role_by_name(db: Session, name: str):
     return db.query(models.Role).filter(models.Role.role_name == name).first()
 
 
-def create_role(db: Session, role: RoleBase):
-    new_role = models.Role(role_name=role.role_name)
+def create_role(db: Session, role_uuid:UUID ,role: RoleBase):
+    now = datetime.utcnow()
+    new_role = models.Role(role_name=role.role_name, role_uuid=role_uuid, created_at=now, updated_at=now)
     db.add(new_role)
     db.commit()
     db.refresh(new_role)
@@ -36,11 +39,14 @@ def update_role(db: Session, role_id: int, role: RoleBase):
     db.commit()
     db.refresh(role_db)
     return role_db
+
 def update_role_by_uuid(db: Session, role_uuid: str, role: RoleBase):
     role_db = get_role_by_uuid(db, role_uuid)
     if not role_db:
         raise Exception("Role not found")
+    now = datetime.utcnow()
     role_db.role_name = role.role_name
+    role_db.updated_at = now
     db.commit()
     db.refresh(role_db)
     return role_db

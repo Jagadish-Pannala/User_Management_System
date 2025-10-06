@@ -2,6 +2,7 @@ from fastapi import HTTPException,status
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao import role_dao, user_dao
 from ...Api_Layer.interfaces.role_mangement import RoleBase, RolePermissionGroupUpdate,RoleGroupRequest
+from ..utils.generate_uuid7 import generate_uuid7
 
 class RoleService:
     def __init__(self, db: Session):
@@ -61,7 +62,7 @@ class RoleService:
 
     def create_role(self, role_data: RoleBase):
         self._check_duplicate_role(role_data.role_name)
-        return role_dao.create_role(self.db, role_data)
+        return role_dao.create_role(self.db, generate_uuid7(),role_data)
 
     def update_role(self, role_id: int, role_data: RoleBase):
         role = role_dao.get_role(self.db, role_id)
@@ -176,6 +177,10 @@ class RoleService:
     def get_permissions_by_role(self, role_id: int):
         return role_dao.get_permissions_by_role(self.db, role_id)
     
+    def get_permissions_by_role_uuid(self, role_uuid: str):
+        role = role_dao.get_role_by_uuid(self.db, role_uuid)
+        return role_dao.get_permissions_by_role(self.db, role.role_id)
+    
     def add_permission_groups_to_role(self, role_id: int, group_ids: list[int]):
         return role_dao.add_permission_groups_to_role(self.db, role_id, group_ids)
 
@@ -184,9 +189,17 @@ class RoleService:
 
     def update_permission_groups_for_role(self, role_id: int, group_ids: list[int]):
         return role_dao.update_permission_groups_for_role(self.db, role_id, group_ids)
+    
+    def update_permission_groups_for_role_uuid(self, role_uuid: int, group_ids: list[int]):
+        role = role_dao.get_role_by_uuid(self.db, role_uuid)
+        return role_dao.update_permission_groups_for_role(self.db, role.role_id, group_ids)
 
     def get_permission_groups_by_role(self, role_id: int):
         return role_dao.get_permission_groups_by_role(self.db, role_id)
+    
+    def get_permission_groups_by_role_uuid(self, role_uuid: str):
+        role = role_dao.get_role_by_uuid(self.db, role_uuid)
+        return role_dao.get_permission_groups_by_role(self.db, role.role_id)
     
     def get_unassigned_permission_groups(self, role_id: int):
         return role_dao.get_unassigned_permission_groups(self.db, role_id)

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 from sqlalchemy.orm import Session
 
-from ..interfaces.role_mangement import RoleBase, RoleOut, RolePermissionGroupUpdate,RoleGroupRequest
+from ..interfaces.role_mangement import RoleBase, RoleOut,RoleGroupRequest,Group
 from ..JWT.jwt_validator.auth.dependencies import get_current_user, get_current_user
 from ...Business_Layer.services.role_service import RoleService
 from ...Data_Access_Layer.utils.dependency import get_db
@@ -58,6 +58,7 @@ def update_role(
     current_user: dict = Depends(get_current_user)
 ):
     return service.update_role(role_id, role)
+
 @router.put("/uuid/{role_uuid}", response_model=RoleOut)
 def update_role_by_uuid(
     role_uuid: str,
@@ -93,6 +94,14 @@ def get_permissions_by_role(
 ):
     return service.get_permissions_by_role(role_id)
 
+@router.get("/uuid/{role_uuid}/permissions")
+def get_permissions_by_role(
+    role_uuid: str,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.get_permissions_by_role_uuid(role_uuid)
+
 @router.get("/{role_id}/groups")
 def get_permission_groups_by_role(
     role_id: int,
@@ -100,6 +109,14 @@ def get_permission_groups_by_role(
     current_user: dict = Depends(get_current_user)
 ):
     return service.get_permission_groups_by_role(role_id)
+
+@router.get("/uuid/{role_uuid}/groups",response_model=List[Group])
+def get_permission_groups_by_role(
+    role_uuid: str,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.get_permission_groups_by_role_uuid(role_uuid)
 
 @router.put("/{role_id}/groups")
 def update_permission_groups_for_role(
@@ -109,6 +126,15 @@ def update_permission_groups_for_role(
     current_user: dict = Depends(get_current_user)
 ):
     return service.update_permission_groups_for_role(role_id, payload.group_ids)
+
+@router.put("/uuid/{role_uuid}/groups")
+def update_permission_groups_for_role(
+    role_uuid: str,
+    payload: RoleGroupRequest,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.update_permission_groups_for_role(role_uuid, payload.group_ids)
 
 @router.post("/{role_id}/groups")
 def add_permission_groups_to_role(
