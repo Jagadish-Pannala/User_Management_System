@@ -21,5 +21,4 @@ class Group(BaseModel):
     group_uuid: UUID
     group_name: str
     created_at: datetime
-    created_by: int
     updated_at: datetime
