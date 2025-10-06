@@ -13,6 +13,9 @@ class PermissionGroupDAO:
 
     def get_group_by_id(self, group_id: int):
         return self.db.query(Permission_Group).filter_by(group_id=group_id).first()
+    
+    def get_group_by_uuid(self, group_uuid: str):
+        return self.db.query(Permission_Group).filter_by(group_uuid=group_uuid).first()
 
     def get_group_by_name(self, name: str):
         return self.db.query(Permission_Group).filter_by(group_name=name).first()

@@ -6,11 +6,12 @@ from ..interfaces.permission_management import (
     PermissionOut,
     PermissionCreate,
     PermissionGroupUpdate,
-    PermissionCreateU,
-    PermissionResponse
+    PermissionResponse,
+    PermissionBaseCreation
 )
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Data_Access_Layer.utils.dependency import get_db
+from typing import List
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ def list_permissions(
     return service.list_permissions()
 
 
-@router.get("/unmapped")
+@router.get("/unmapped", response_model=List[PermissionOut])
 def get_unmapped_permissions(
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
@@ -35,13 +36,13 @@ def get_unmapped_permissions(
     return service.list_unmapped_permissions()
 
 
-@router.get("/{permission_id}", response_model=PermissionOut)
+@router.get("/{permission_uuid}", response_model=PermissionOut)
 def get_permission(
-    permission_id: int,
+    permission_uuid: str,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    return service.get_permission(permission_id)
+    return service.get_permission(permission_uuid)
 
 
 @router.post("", status_code=201)
@@ -51,13 +52,13 @@ def create_permission(
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.create_permission_minimal(
-        payload.permission_code, payload.description, payload.group_id
+        payload.permission_code, payload.description, payload.group_uuid
     )
 
 
 @router.post("/", status_code=201)
 def create_permission_basic(
-    permission: PermissionCreateU,
+    permission: PermissionBaseCreation,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
@@ -66,15 +67,15 @@ def create_permission_basic(
     )
 
 
-@router.put("/{permission_id}", response_model=dict)
+@router.put("/{permission_uuid}", response_model=dict)
 def update_permission(
-    permission_id: int,
-    payload: PermissionBase,
+    permission_uuid: str,
+    payload: PermissionBaseCreation,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     result = service.update_permission(
-        permission_id, payload.permission_code, payload.description
+        permission_uuid, payload.permission_code, payload.description
     )
     
     # Convert SQLAlchemy object to Pydantic model
@@ -86,34 +87,34 @@ def update_permission(
     }
 
 
-@router.delete("/{permission_id}")
+@router.delete("/{permission_uuid}")
 def delete_permission(
-    permission_id: int,
+    permission_uuid: str,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    service.delete_permission(permission_id)
+    service.delete_permission(permission_uuid)
     return {"message": "Permission deleted successfully"}
 
 
-@router.delete("/cascading/{permission_id}")
+@router.delete("/cascading/{permission_uuid}")
 def delete_permission_cascade(
-    permission_id: int,
+    permission_uuid: str,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    service.delete_permission_cascade(permission_id)
+    service.delete_permission_cascade(permission_uuid)
     return {"message": "Permission and all associations deleted successfully"}
 
 
-@router.put("/{permission_id}/group")
+@router.put("/{permission_uuid}/group")
 def update_permission_group(
-    permission_id: int,
+    permission_uuid: str,
     payload: PermissionGroupUpdate,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    service.reassign_group(permission_id, payload.group_id)
+    service.reassign_group(permission_uuid, payload.group_uuid)
     return {"message": "Permission reassigned to new group successfully"}
 
 

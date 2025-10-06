@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.permission_dao import PermissionDAO
 from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
 from ...Data_Access_Layer.dao.access_point_dao import AccessPointDAO
+from ..utils.generate_uuid7 import generate_uuid7
 
 # Regex to allow only UPPERCASE letters separated by underscores
 PERMISSION_CODE_PATTERN = re.compile(r'^[A-Z]+(_[A-Z]+)*$')
@@ -15,7 +16,8 @@ class PermissionService:
         self.group_dao = PermissionGroupDAO(db)
         self.access_point_dao = AccessPointDAO(db)
 
-    def create_permission_minimal(self, permission_code: str, description: str, group_id: int = None):
+    def create_permission_minimal(self, permission_code: str, description: str, group_uuid: str = None):
+        group_id = None
         # ✅ Validate empty or whitespace-only values
         if not permission_code or not permission_code.strip():
             raise HTTPException(
@@ -48,44 +50,45 @@ class PermissionService:
             )
 
         # ✅ Create permission
-        permission = self.dao.create(permission_code, description.strip())
+        permission = self.dao.create(permission_code, description.strip(),generate_uuid7())
 
         # ✅ Assign to group
-        if not group_id:
+        if not group_uuid:
             default_group = self.group_dao.get_group_by_name("newly_created_permissions_group")
             if not default_group:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Default group not found"
                 )
+            group_uuid = default_group.group_uuid
             group_id = default_group.group_id
         else:
-            group = self.group_dao.get_group_by_id(group_id)
+            group = self.group_dao.get_group_by_uuid(group_uuid)
             if not group:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Provided group not found"
                 )
-
+            group_id = group.group_id
         self.dao.map_to_group(permission.permission_id, group_id)
 
         return {
             "message": "Permission created and assigned to group successfully",
-            "permission_id": permission.permission_id,
-            "group_id": group_id
+            "permission_uuid": permission.permission_uuid,
+            "group_uuid": group_uuid
         }
 
     def list_permissions(self):
         return self.dao.get_all()
 
-    def get_permission(self, permission_id: int):
-        permission = self.dao.get_by_id(permission_id)
+    def get_permission(self, permission_uuid: str):
+        permission = self.dao.get_by_uuid(permission_uuid)
         if not permission:
             raise HTTPException(status_code=404, detail="Permission not found")
         return permission
 
-    def update_permission(self, permission_id: int, code: str, desc: str):
-        permission = self.dao.get_by_id(permission_id)
+    def update_permission(self, permission_uuid: str, code: str, desc: str):
+        permission = self.dao.get_by_uuid(permission_uuid)
         if not permission:
             raise HTTPException(status_code=404, detail="Permission not found")
 
@@ -107,12 +110,12 @@ class PermissionService:
 
         return self.dao.update(permission, code, desc.strip())
 
-    def delete_permission(self, permission_id: int):
-        permission = self.dao.get_by_id(permission_id)
+    def delete_permission(self, permission_uuid: str):
+        permission = self.dao.get_by_uuid(permission_uuid)
         if not permission:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Permission with ID {permission_id} not found"
+                detail=f"Permission with ID {permission_uuid} not found"
             )
 
         try:
@@ -128,18 +131,21 @@ class PermissionService:
                 detail=f"Failed to delete permission: {str(e)}"
             )
 
-        return {"message": f"Permission with ID {permission_id} deleted successfully"}
+        return {"message": f"Permission with ID {permission_uuid} deleted successfully"}
 
-    def delete_permission_cascade(self, permission_id: int):
-        if not self.dao.get_by_id(permission_id):
+    def delete_permission_cascade(self, permission_uuid: str):
+        if not self.dao.get_by_uuid(permission_uuid):
             raise HTTPException(status_code=404, detail="Permission not found")
+        permission_id = self.dao.get_by_uuid(permission_uuid).permission_id
         self.dao.delete_cascade(permission_id)
 
-    def reassign_group(self, permission_id: int, group_id: int):
-        if not self.dao.get_by_id(permission_id):
+    def reassign_group(self, permission_uuid: int, group_uuid: int):
+        if not self.dao.get_by_uuid(permission_uuid):
             raise HTTPException(status_code=404, detail="Permission not found")
-        if not self.group_dao.get_group_by_id(group_id):
+        if not self.group_dao.get_group_by_uuid(group_uuid):
             raise HTTPException(status_code=404, detail="Group not found")
+        permission_id = self.dao.get_by_uuid(permission_uuid).permission_id
+        group_id = self.group_dao.get_group_by_uuid(group_uuid).group_id
         self.dao.update_group_mapping(permission_id, group_id)
 
     def list_unmapped_permissions(self):

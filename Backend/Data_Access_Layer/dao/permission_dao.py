@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from ..models import models
 from fastapi import HTTPException
+from datetime import datetime
 
 
 class PermissionDAO:
@@ -13,6 +14,9 @@ class PermissionDAO:
 
     def get_by_id(self, permission_id: int):
         return self.db.query(models.Permissions).filter_by(permission_id=permission_id).first()
+    
+    def get_by_uuid(self, permission_uuid: str):
+        return self.db.query(models.Permissions).filter_by(permission_uuid=permission_uuid).first()
 
     def get_by_code(self, code: str):
         return self.db.query(models.Permissions).filter_by(permission_code=code).first()
@@ -24,8 +28,9 @@ class PermissionDAO:
             )
         ).all()
 
-    def create(self, permission_code: str, description: str):
-        permission = models.Permissions(permission_code=permission_code, description=description)
+    def create(self, permission_code: str, description: str, permission_uuid: str):
+        now = datetime.utcnow()
+        permission = models.Permissions(permission_code=permission_code, description=description, permission_uuid=permission_uuid, created_at=now, updated_at=now)
         self.db.add(permission)
         self.db.commit()
         self.db.refresh(permission)
@@ -58,6 +63,8 @@ class PermissionDAO:
                 )
 
         # Update Permissions table
+        now = datetime.utcnow()
+        permission.updated_at = now
         permission.permission_code = code
         permission.description = desc
         self.db.commit()

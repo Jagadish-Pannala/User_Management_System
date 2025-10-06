@@ -1,24 +1,31 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from enum import Enum
+from datetime import datetime
 
 class PermissionBase(BaseModel):
     permission_code: str
     description: str
+    created_at: datetime
+    updated_at: datetime
+
+class PermissionBaseCreation(BaseModel):
+    permission_code: str
+    description: str
 
 class PermissionOut(PermissionBase):
-    permission_id: int
+    permission_uuid: str
     class Config:
         from_attributes = True
 
-class PermissionCreate(PermissionBase):
-    group_id: int
+class PermissionCreate(PermissionBaseCreation):
+    group_uuid: str
 
 class PermissionCreateU(PermissionBase):
     pass
 
 class PermissionGroupUpdate(BaseModel):
-    group_id: int
+    group_uuid: int
 
 class HTTPMethod(str, Enum):
     GET = "GET"
@@ -38,7 +45,7 @@ class AccessPointPermissionMappingIn(BaseModel):
 
 
 class PermissionResponse(BaseModel):
-    permission_id: int
+    permission_uuid: str
     permission_code: str
     description: str
     
