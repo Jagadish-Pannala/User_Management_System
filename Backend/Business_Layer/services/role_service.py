@@ -127,7 +127,7 @@ class RoleService:
     def add_permission_groups_to_role(self, role_uuid: str, group_uuids: list[str], assigned_by: int):
         return role_dao.add_permission_groups_to_role(self.db, role_uuid, group_uuids, assigned_by)
 
-    def remove_permission_group_from_role(self, role_uuid: str, group_uuid: str, assigned_by: int):
+    def remove_permission_group_from_role(self, role_uuid: str, group_uuid: str):
         return role_dao.remove_permission_group_from_role(self.db, role_uuid, group_uuid)
 
     def update_permission_groups_for_role(self, role_id: int, group_ids: list[int]):
