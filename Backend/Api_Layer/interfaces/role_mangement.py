@@ -15,7 +15,7 @@ class RolePermissionGroupUpdate(BaseModel):
     group_ids: list[int]
 
 class RoleGroupRequest(BaseModel):
-    group_ids: List[int]
+    group_uuids: List[str]
 
 class Group(BaseModel):
     group_uuid: UUID

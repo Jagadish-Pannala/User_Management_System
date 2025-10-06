@@ -17,6 +17,9 @@ def get_role(db: Session, role_id: int):
 def get_role_by_uuid(db: Session, role_uuid: str):
     return db.query(models.Role).filter(models.Role.role_uuid == role_uuid).first()
 
+def get_permission_group_by_uuid(db: Session, group_uuid: str):
+    return db.query(models.Permission_Group).filter(models.Permission_Group.group_uuid == group_uuid).first()
+
 
 def get_role_by_name(db: Session, name: str):
     return db.query(models.Role).filter(models.Role.role_name == name).first()
@@ -133,10 +136,26 @@ def get_permission_groups_by_role(db: Session, role_id: int):
               models.Permission_Group.group_id == models.Role_Permission_Group.group_id)
         .filter(models.Role_Permission_Group.role_id == role_id)
         .all()
-    )
+    )   
 
 
-def add_permission_groups_to_role(db: Session, role_id: int, group_ids: list[int]):
+def add_permission_groups_to_role(db: Session, role_uuid: str, group_uuids: list[str], assigned_by: int):
+    role = get_role_by_uuid(db, role_uuid)
+    if not role:    
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role ID {role_uuid} does not exist"
+        )   
+    role_id = role.role_id
+    group_ids = []
+    for group_uuid in group_uuids:
+        group = get_permission_group_by_uuid(db, group_uuid)
+        if not group:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Permission group UUID {group_uuid} does not exist"
+            )
+        group_ids.append(group.group_id)
     group_ids = list({int(g) for g in group_ids})
 
     existing_group_ids = {
@@ -149,8 +168,9 @@ def add_permission_groups_to_role(db: Session, role_id: int, group_ids: list[int
             detail=f"The following group IDs do not exist: {invalid_ids}"
         )
 
+    now = datetime.utcnow()
     new_assignments = [
-        models.Role_Permission_Group(role_id=role_id, group_id=gid)
+        models.Role_Permission_Group(role_id=role_id, group_id=gid, assigned_by=assigned_by, assigned_at=now)
         for gid in group_ids
         if not db.query(exists().where(
             models.Role_Permission_Group.role_id == role_id,
@@ -165,34 +185,57 @@ def add_permission_groups_to_role(db: Session, role_id: int, group_ids: list[int
     return {"message": "Permission groups added successfully"}
 
 
-def remove_permission_group_from_role(db: Session, role_id: int, group_id: int):
-    group_id = int(group_id)
-
-    if not db.query(exists().where(models.Permission_Group.group_id == group_id)).scalar():
+def remove_permission_group_from_role(db: Session, role_uuid: str, group_uuid: str):
+    
+    if not db.query(exists().where(models.Permission_Group.group_uuid == group_uuid)).scalar():
         raise HTTPException(
             status_code=400,
-            detail=f"Permission group ID {group_id} does not exist"
+            detail=f"Permission group ID {group_uuid} does not exist"
         )
 
+    role = get_role_by_uuid(db, role_uuid)
+    if not role:        
+        raise HTTPException(
+            status_code=400,
+            detail=f"Role ID {role_uuid} does not exist"
+        )   
+    role_id = role.role_id
+    group = get_permission_group_by_uuid(db, group_uuid)
+    if not group:     
+        raise HTTPException(
+            status_code=400,
+            detail=f"Permission group ID {group_uuid} does not exist"
+        )                                                           
+    group_id = group.group_id
     assignment = db.query(models.Role_Permission_Group)\
                    .filter_by(role_id=role_id, group_id=group_id)\
                    .first()
     if not assignment:
         raise HTTPException(
             status_code=400,
-            detail=f"Permission group ID {group_id} is not assigned to role ID {role_id}"
+            detail=f"Permission group ID {group_uuid} is not assigned to role ID {role_uuid}"
         )
 
     db.delete(assignment)
     db.commit()
-    return {"message": f"Permission group ID {group_id} removed from role ID {role_id}"}
+    return {"message": f"Permission group ID {group_uuid} removed from role ID {role_uuid}"}
 
 
-def update_permission_groups_for_role(db: Session, role_id: int, group_ids: list[int]):
+def update_permission_groups_for_role(db: Session, role_id: int, group_uuids: list[int]):
     role = get_role(db, role_id)
     if not role:
         raise Exception("Role not found")
 
+    group_ids = []
+    for group_uuid in group_uuids:
+        group = get_permission_group_by_uuid(db, group_uuid)
+        if not group:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Permission group UUID {group_uuid} does not exist"
+            )
+        group_ids.append(group.group_id)    
+    group_ids = list({int(g) for g in group_ids})
     existing_group_ids = {group.group_id for group in role.permission_groups}
     new_group_ids = set(group_ids) - existing_group_ids
 

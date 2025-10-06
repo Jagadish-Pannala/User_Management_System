@@ -11,11 +11,7 @@ class RoleService:
     def list_roles(self):
         return role_dao.get_all_roles(self.db)
 
-    def get_role_by_id(self, role_id: int):
-        role = role_dao.get_role(self.db, role_id)
-        if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
-        return role
+    
     def get_role_by_uuid(self, role_uuid: str):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
         if not role:
@@ -63,24 +59,6 @@ class RoleService:
     def create_role(self, role_data: RoleBase):
         self._check_duplicate_role(role_data.role_name)
         return role_dao.create_role(self.db, generate_uuid7(),role_data)
-
-    def update_role(self, role_id: int, role_data: RoleBase):
-        role = role_dao.get_role(self.db, role_id)
-        if not role:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Role not found"
-            )
-
-        # protect mandatory roles
-        mandatory_roles = ["Admin", "Super Admin", "HR", "General"]
-        if role.role_name in mandatory_roles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Role '{role.role_name}' is mandatory and cannot be renamed"
-            )
-        self._check_duplicate_role(role_data.role_name, exclude_role_id=role_id)
-        return role_dao.update_role(self.db, role_id, role_data)
     
     def update_role_by_uuid(self, role_uuid: str, role_data: RoleBase):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
@@ -101,39 +79,6 @@ class RoleService:
         self._check_duplicate_role(role_data.role_name, exclude_role_id=role.role_id)
         return role_dao.update_role_by_uuid(self.db, role_uuid, role_data)
 
-
-    def delete_role(self, role_id: int):
-        role = role_dao.get_role(self.db, role_id)
-        if not role:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Role not found"
-            )
-
-        # protect mandatory roles
-        mandatory_roles = ["Admin", "Super Admin", "HR", "General"]
-        if role.role_name in mandatory_roles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Role '{role.role_name}' is mandatory and cannot be deleted"
-            )
-
-        # 1. Get all users who have this role
-        user_ids = role_dao.get_users_by_role(self.db, role_id)
-
-        # 2. Cleanup dependent mappings (no cascade in DB)
-        role_dao.delete_user_roles_by_role(self.db, role_id)
-        role_dao.delete_role_permission_groups(self.db, role_id)
-
-        # 3. Assign "General" role to users who now have no roles
-        general_role = role_dao.get_role_by_name(self.db, "General")
-        for user_id in user_ids:
-            user_roles = role_dao.get_user_roles(self.db, user_id)
-            if not user_roles:  # Only assign if user has zero roles left
-                role_dao.assign_role(self.db, user_id, general_role.role_id)
-
-        # 4. Finally delete the role
-        return role_dao.delete_role(self.db, role_id)
     
     def delete_role_by_uuid(self, role_uuid: str):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
@@ -174,34 +119,31 @@ class RoleService:
     def update_role_permission_groups(self, role_id: int, payload: RolePermissionGroupUpdate):
         return role_dao.update_role_groups(self.db, role_id, payload.group_ids)
 
-    def get_permissions_by_role(self, role_id: int):
-        return role_dao.get_permissions_by_role(self.db, role_id)
     
     def get_permissions_by_role_uuid(self, role_uuid: str):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
         return role_dao.get_permissions_by_role(self.db, role.role_id)
     
-    def add_permission_groups_to_role(self, role_id: int, group_ids: list[int]):
-        return role_dao.add_permission_groups_to_role(self.db, role_id, group_ids)
+    def add_permission_groups_to_role(self, role_uuid: str, group_uuids: list[str], assigned_by: int):
+        return role_dao.add_permission_groups_to_role(self.db, role_uuid, group_uuids, assigned_by)
 
-    def remove_permission_group_from_role(self, role_id: int, group_id: int):
-        return role_dao.remove_permission_group_from_role(self.db, role_id, group_id)
+    def remove_permission_group_from_role(self, role_uuid: str, group_uuid: str, assigned_by: int):
+        return role_dao.remove_permission_group_from_role(self.db, role_uuid, group_uuid)
 
     def update_permission_groups_for_role(self, role_id: int, group_ids: list[int]):
         return role_dao.update_permission_groups_for_role(self.db, role_id, group_ids)
     
-    def update_permission_groups_for_role_uuid(self, role_uuid: int, group_ids: list[int]):
+    def update_permission_groups_for_role_uuid(self, role_uuid: str, group_uuids: list[str]):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
-        return role_dao.update_permission_groups_for_role(self.db, role.role_id, group_ids)
+        return role_dao.update_permission_groups_for_role(self.db, role.role_id, group_uuids)
 
-    def get_permission_groups_by_role(self, role_id: int):
-        return role_dao.get_permission_groups_by_role(self.db, role_id)
     
     def get_permission_groups_by_role_uuid(self, role_uuid: str):
         role = role_dao.get_role_by_uuid(self.db, role_uuid)
         return role_dao.get_permission_groups_by_role(self.db, role.role_id)
     
-    def get_unassigned_permission_groups(self, role_id: int):
-        return role_dao.get_unassigned_permission_groups(self.db, role_id)
+    def get_unassigned_permission_groups(self, role_uuid: str):
+        role = role_dao.get_role_by_uuid(self.db, role_uuid)
+        return role_dao.get_unassigned_permission_groups(self.db, role.role_id)
     
     
