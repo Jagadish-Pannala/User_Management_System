@@ -101,7 +101,7 @@ class PermissionGroupService:
 
     # services/permission_group_service.py
 
-    def add_permissions_to_group(self, group_uuid: str, permission_uuids: list[str]):
+    def add_permissions_to_group(self, group_uuid: str, permission_uuids: list[str],assigned_by: int):
         group = self.dao.get_group_by_uuid(group_uuid)
         if not group:   
             raise HTTPException(status_code=404, detail="Permission group not found")
@@ -116,7 +116,7 @@ class PermissionGroupService:
             permission_ids.append(perm.permission_id)
         
         # Add permissions to group
-        new_mappings = self.dao.add_permissions_to_group(group_id, permission_ids)
+        new_mappings = self.dao.add_permissions_to_group(group_id, permission_ids,assigned_by)
         # Return full permission objects for response
         return self.dao.get_permissions_by_ids([m.permission_id for m in new_mappings])
 

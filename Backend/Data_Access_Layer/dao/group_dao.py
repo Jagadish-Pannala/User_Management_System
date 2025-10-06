@@ -97,7 +97,7 @@ class PermissionGroupDAO:
     def get_permission_by_uuid(self, permission_uuid: str):
         return self.db.query(Permissions).filter_by(permission_uuid=permission_uuid).first()
 
-    def add_permissions_to_group(self, group_id: int, permission_ids: list[int]):
+    def add_permissions_to_group(self, group_id: int, permission_ids: list[int],  assigned_by: int):
         existing = (
             self.db.query(Permission_Group_Mapping.permission_id)
             .filter(
@@ -109,7 +109,7 @@ class PermissionGroupDAO:
         existing_ids = {e[0] for e in existing}
 
         new_mappings = [
-            Permission_Group_Mapping(group_id=group_id, permission_id=pid)
+            Permission_Group_Mapping(group_id=group_id, permission_id=pid, assigned_by=assigned_by, assigned_at=datetime.utcnow())
             for pid in permission_ids if pid not in existing_ids
         ]
 

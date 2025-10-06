@@ -111,7 +111,7 @@ def add_permissions_to_group(
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        return service.add_permissions_to_group(group_uuid, permission_uuids)
+        return service.add_permissions_to_group(group_uuid, permission_uuids,current_user['user_id'])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
