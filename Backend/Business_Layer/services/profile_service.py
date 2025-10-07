@@ -35,14 +35,14 @@ class ProfileService(BaseService):
         user = self.dao.get_user_by_email(current_user["email"])
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        validate_password_strength(profile.password)
+        if profile.password:
+            validate_password_strength(profile.password)
 
         success = self.dao.update_user_profile(user, {
             "first_name": profile.first_name,
             "last_name": profile.last_name,
             "contact": profile.contact,
-            "password": hash_password(profile.password)
+            "password": hash_password(profile.password) if profile.password else user.password
         })
 
         if not success:
