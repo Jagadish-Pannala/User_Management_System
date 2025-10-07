@@ -21,24 +21,28 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # explicitly define foreign_keys for ambiguous relationships
-    roles = relationship(
-        "Role",
-        secondary="User_Role",
-        back_populates="users",
-        secondaryjoin="Role.role_id==User_Role.role_id",
-        primaryjoin="User.user_id==User_Role.user_id",
-    )
+    # Direct relationship to User_Role entries
     assigned_roles = relationship(
         "User_Role",
         back_populates="user",
         cascade="all, delete-orphan",
-        foreign_keys="User_Role.user_id"
+        foreign_keys="[User_Role.user_id]"
     )
-    assigned_permissions = relationship("AccessPointPermission", back_populates="assigned_by_user")
+    
+    # Many-to-many to Role - MUST specify foreign_keys due to assigned_by column
+    roles = relationship(
+        "Role",
+        secondary="User_Role",
+        primaryjoin="User.user_id == User_Role.user_id",
+        secondaryjoin="Role.role_id == User_Role.role_id",
+        back_populates="users",
+        viewonly=True
+    )
+    
+    assigned_permissions = relationship("AccessPointPermission", back_populates="assigned_by_user", foreign_keys="[AccessPointPermission.assigned_by]")
     created_permission_groups = relationship("Permission_Group", back_populates="created_by_user")
     created_access_points = relationship("AccessPoint", back_populates="created_by_user")
-    audit_trails = relationship("AuditTrail", back_populates="user")
+    audit_trails = relationship("AuditTrail", back_populates="user", foreign_keys="[AuditTrail.user_id]")
 
 
 # ----------------------- Role Table -----------------------
@@ -51,19 +55,26 @@ class Role(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    # Direct relationship to User_Role entries
+    user_roles = relationship(
+        "User_Role",
+        back_populates="role"
+    )
+    
+    # Many-to-many to User - MUST specify joins due to assigned_by column
     users = relationship(
         "User",
         secondary="User_Role",
+        primaryjoin="Role.role_id == User_Role.role_id",
+        secondaryjoin="User.user_id == User_Role.user_id",
         back_populates="roles",
-        primaryjoin="Role.role_id==User_Role.role_id",
-        secondaryjoin="User.user_id==User_Role.user_id",
-        foreign_keys="[User_Role.user_id, User_Role.role_id]"
+        viewonly=True
     )
+    
     permission_groups = relationship(
         "Permission_Group",
         secondary="Role_Permission_Group",
-        back_populates="roles",
-        cascade="all"
+        back_populates="roles"
     )
 
 
@@ -76,9 +87,16 @@ class User_Role(Base):
     assigned_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
     assigned_at = Column(DateTime, server_default=func.now())
 
-    user = relationship("User", back_populates="assigned_roles", foreign_keys=[user_id])
-    role = relationship("Role")
-
+    # Explicitly specify foreign_keys to avoid ambiguity with assigned_by
+    user = relationship(
+        "User", 
+        back_populates="assigned_roles", 
+        foreign_keys=[user_id]
+    )
+    role = relationship(
+        "Role", 
+        back_populates="user_roles"
+    )
 
 # ----------------------- Permissions Table -----------------------
 class Permissions(Base):
