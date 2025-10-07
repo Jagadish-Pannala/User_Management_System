@@ -13,6 +13,7 @@ class AccessPointDAO:
 
     # ===================== AccessPoint =========================
     def create_access_point(self, endpoint_path: str,created_by: int,access_uuid:str, regex_pattern: str, method: str, module: str, is_public: bool = False,) -> AccessPoint:
+        now = datetime.utcnow()
         access_point = AccessPoint(
             endpoint_path=endpoint_path,
             regex_pattern=regex_pattern,
@@ -20,7 +21,9 @@ class AccessPointDAO:
             module=module,
             is_public=is_public,
             created_by=created_by,
-            access_uuid=access_uuid
+            access_uuid=access_uuid,
+            created_at=now,
+            updated_at=now
         )
         self.db.add(access_point)
         self.db.commit()
@@ -55,6 +58,11 @@ class AccessPointDAO:
         return self.db.query(AccessPoint).options(
             joinedload(AccessPoint.permission_mappings).joinedload(AccessPointPermission.permission)
         ).filter_by(access_id=access_id).first()
+    
+    def get_access_point_by_uuid(self, access_uuid: str) -> Optional[AccessPoint]:
+        return self.db.query(AccessPoint).options(
+            joinedload(AccessPoint.permission_mappings).joinedload(AccessPointPermission.permission)
+        ).filter_by(access_uuid=access_uuid).first()
 
 
     def get_all_access_points(self) -> List[AccessPoint]:
@@ -68,6 +76,8 @@ class AccessPointDAO:
         )
 
     def update_access_point(self, access_id: int, **data) -> Optional[AccessPoint]:
+        now = datetime.utcnow()
+        data['updated_at'] = now
         ap = self.db.query(AccessPoint).filter_by(access_id=access_id).first()
         if not ap:
             return None
@@ -143,10 +153,14 @@ class AccessPointDAO:
         return False
 
     # ===================== AccessPointPermission Mapping =========================
-    def create_access_permission_mapping(self, access_id: int, permission_id: int) -> AccessPointPermission:
+    def create_access_permission_mapping(self, access_id: int, permission_id: int,assigned_by:int) -> AccessPointPermission:
+        now = datetime.utcnow()
+
         mapping = AccessPointPermission(
             access_id=access_id,
-            permission_id=permission_id
+            permission_id=permission_id,
+            assigned_at=now,
+            assigned_by=assigned_by  # You can modify this to accept an assigned_by parameter if needed
         )
         self.db.add(mapping)
         self.db.commit()

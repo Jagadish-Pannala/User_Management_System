@@ -58,59 +58,59 @@ def list_aps(
     return service.list()
 
 
-@router.get("/{access_id}", response_model=AccessPointOut)
+@router.get("/{access_uuid}", response_model=AccessPointOut)
 def get_ap(
-    access_id: int,
+    access_uuid: str,
     _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.get(access_id)
+    return service.get(access_uuid)
 
 
-@router.put("/{access_id}", response_model=AccessPointOut)
+@router.put("/{access_uuid}", response_model=AccessPointOut)
 def update_ap(
-    access_id: int,
+    access_uuid: str,
     data: AccessPointUpdate,
     _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.update(access_id, data)
+    return service.update(access_uuid, data)
 
 
-@router.delete("/{access_id}")
+@router.delete("/{access_uuid}")
 def delete_ap(
-    access_id: int,
+    access_uuid: str,
     _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.delete(access_id)
+    return service.delete(access_uuid)
 
 
-@router.post("/{access_id}/map-permission/{permission_id}")
+@router.post("/{access_uuid}/map-permission/{permission_uuid}")
 def map_permission(
-    access_id: int,
-    permission_id: int,
-    _: dict = Depends(get_current_user),
+    access_uuid: str,
+    permission_uuid: str,
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.map_permission(access_id, permission_id)
+    return service.map_permission(access_uuid, permission_uuid,current_user['user_id'])
 
 
-@router.delete("/{access_id}/unmap-permission/{permission_id}")
+@router.delete("/{access_uuid}/unmap-permission/{permission_uuid}")
 def unmap_permission(
-    access_id: int,
-    permission_id: int,
+    access_uuid: str,
+    permission_uuid: str,
     _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.unmap_permission_both(access_id, permission_id)
+    return service.unmap_permission_both(access_uuid, permission_uuid)
 
 
-@router.post("/access-points/{access_id}/map-permission")
+@router.post("{access_uuid}/map-permission")
 def map_permission_new(
-    access_id: int,
+    access_uuid: str,
     data: PermissionMappingIn,
     _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.map_permission(access_id, data.permission_id)
+    return service.map_permission(access_uuid, data.permission_uuid)
