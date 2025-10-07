@@ -228,6 +228,7 @@ class UserDAO:
     def get_users_with_roles(self) -> List[dict]:
         results = (
             self.db.query(
+                models.User.user_id,
                 models.User.user_uuid,
                 models.User.first_name,
                 models.User.last_name,
@@ -240,9 +241,10 @@ class UserDAO:
         )
  
         user_map = {}
-        for user_uuid, first_name, last_name, mail, role_name in results:
+        for user_id,user_uuid, first_name, last_name, mail, role_name in results:
             if user_uuid not in user_map:
                 user_map[user_uuid] = {
+                    "user_id": user_id,
                     "user_uuid": user_uuid,
                     "first_name": first_name,
                     "last_name": last_name,

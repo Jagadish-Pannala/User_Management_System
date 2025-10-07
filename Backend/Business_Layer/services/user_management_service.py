@@ -29,6 +29,20 @@ class UserService:
                 "mail": user['mail']
             })
         return result
+    
+    def get_users_with_roles_id(self):
+        users = self.dao.get_users_with_roles()
+        result = []
+        for user in users:
+            full_name = f"{user['first_name']} {user['last_name']}"
+            role_names = [role for role in user['roles']]
+            result.append({
+                "user_id": user['user_id'],
+                "name": full_name,
+                "roles": role_names,
+                "mail": user['mail']
+            })
+        return result
  
     def get_user_uuid(self, user_uuid):
         return self.dao.get_user_by_uuid(user_uuid)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..interfaces.user_management import UserBase, UserOut, UserRoleUpdate, UserWithRoleNames,UserBaseIn,UserOut_uuid
+from ..interfaces.user_management import UserBase, UserOut, UserRoleUpdate, UserWithRoleNames,UserBaseIn,UserOut_uuid,UserWithRoleNames_id
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
@@ -29,6 +29,13 @@ def get_users_with_roles(
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_users_with_roles()
+
+@router.get("/id/roles", response_model=list[UserWithRoleNames_id])
+def get_users_with_roles(
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return user_service.get_users_with_roles_id()
 
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
