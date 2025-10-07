@@ -83,7 +83,7 @@ class AccessPointDAO:
             return None
 
         # 1. Update standard fields
-        access_point_fields = ['endpoint_path', 'method', 'module', 'is_public']
+        access_point_fields = ['endpoint_path', 'regex_pattern', 'method', 'module', 'is_public']
         for field in access_point_fields:
             if field in data and getattr(ap, field) != data[field]:
                 setattr(ap, field, data[field])

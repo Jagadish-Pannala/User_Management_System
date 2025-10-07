@@ -151,6 +151,8 @@ class AccessPointService:
 
             # Use new values if present, else old values
             new_endpoint = update_dict.get('endpoint_path', current_ap.endpoint_path)
+            new_regex = self.normalize_endpoint(new_endpoint)
+            update_dict['regex_pattern'] = new_regex  # Update regex pattern if endpoint changes
             new_method = update_dict.get('method', current_ap.method)
 
             # Check if another access point already has same endpoint+method
