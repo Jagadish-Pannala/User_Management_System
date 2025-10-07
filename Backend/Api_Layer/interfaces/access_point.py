@@ -31,7 +31,7 @@ class AccessPointUpdate(BaseModel):
     permission_code: Optional[str] = None
 
 class CreateAPResponse(BaseModel):
-    access_uuid: int
+    access_uuid: str
     message: str
 
 class PermissionMappingIn(BaseModel):
