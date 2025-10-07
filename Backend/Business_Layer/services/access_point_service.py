@@ -69,7 +69,7 @@ class AccessPointService:
             ) from e
 
         return {
-            "access_id": access_point.access_id,
+            "access_uuid": access_point.access_uuid,
             "message": "Access point created successfully"
         }
 
