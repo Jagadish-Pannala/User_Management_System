@@ -41,7 +41,7 @@ class AuthDAO:
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        if user.last_login_at is None and user.password_last_updated is None:
+        if user.last_login_at is None or user.password_last_updated is None:
             return True
         return False
 
