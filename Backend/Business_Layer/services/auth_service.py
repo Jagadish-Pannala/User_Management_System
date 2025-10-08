@@ -246,7 +246,6 @@ class AuthService:
                 detail="Failed to update password"
             )
         
-        dao.password_last_updated(user.user_id)
         return {"message": "Password changed successfully"}
 
         

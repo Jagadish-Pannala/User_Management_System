@@ -60,8 +60,11 @@ class AuthDAO:
 
     def update_user_password(self, user: models.User, new_hashed_password: str) -> bool:
         try:
+            now = datetime.utcnow()
             user.password = new_hashed_password
             user.is_active = True
+            user.password_last_updated = now
+            user.updated_at = now
             self.db.commit()
             return True
         except SQLAlchemyError:
