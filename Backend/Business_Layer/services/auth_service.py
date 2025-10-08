@@ -84,7 +84,9 @@ class AuthService:
         access_token = token_create(token_data)
 
         redirect = "/dashboard"
-         
+        if dao.check_user_first_login(user.user_id):
+            redirect = "/change-password"
+
         dao.update_last_login(user.user_id, client_ip)
         return {
             "access_token": access_token,
@@ -166,7 +168,9 @@ class AuthService:
         }
  
         access_token = token_create(token_data)
-        redirect = "/user-management" if "Admin" in roles or "Super Admin" in roles else "/home"
+        redirect = "/dashboard"
+        if dao.check_user_first_login(user.user_id):
+            redirect = "/change-password"
 
         dao.update_last_login(user.user_id, client_ip)
         return {
@@ -212,7 +216,41 @@ class AuthService:
         dao.password_last_updated(user.user_id)
         return {"message": "Password updated and user activated"}
 
+    def change_password_first_login(self, payload: dict, user_id: int):
 
+        dao = self._get_dao()
+
+        user_email = payload.get("email")
+
+        user = dao.get_user_by_email(user_email)
+
+        if user.user_id != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only change your own password")
+
+        old_password = payload.get("old_password")
+        new_password = payload.get("new_password")
+        
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+        if not verify_password(old_password, user.password):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Old password is incorrect")
+        
+        validate_password_strength(new_password)
+        new_hashed_password = hash_password(new_password)
+
+        if not dao.update_user_password(user, new_hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password"
+            )
+        
+        dao.password_last_updated(user.user_id)
+        return {"message": "Password changed successfully"}
+
+        
+    
     def check_user_exists(self, email: str):
         dao = self._get_dao()
 

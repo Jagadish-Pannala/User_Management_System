@@ -35,6 +35,15 @@ class AuthDAO:
         user.last_login_ip = ip
         print(f"Updated last login for user_id {user_id} to {user.last_login_at} from IP {ip}")
         self.db.commit()
+    
+    def check_user_first_login(self, user_id: int) -> bool:
+        user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.last_login_at is None or user.password_last_updated is None:
+            return True
+        return False
 
     def create_user(self, user_data, hashed_password: str) -> models.User:
         new_user = models.User(

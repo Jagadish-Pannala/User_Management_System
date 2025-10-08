@@ -1,8 +1,9 @@
-from fastapi import APIRouter,HTTPException, Request
+from fastapi import APIRouter,HTTPException, Request,Depends
 from fastapi.responses import RedirectResponse
 from ..interfaces.auth import RegisterUser, LoginUser, ForgotPassword
 from ...Business_Layer.services.auth_service import AuthService
 from ...config.env_loader import get_env_var
+from ..JWT.jwt_validator.auth.dependencies import get_current_user
 
 
 router = APIRouter()
@@ -65,3 +66,7 @@ def check_user_status(email: str):
 @router.post("/forgot-password")
 def forgot_password(update: ForgotPassword):
     return auth_service.forgot_password(update)
+
+@router.post("/first-login/change-password")
+def change_password_first_login(payload: dict,current_user: dict = Depends(get_current_user)):
+    return auth_service.change_password_first_login(payload,current_user['user_id'])
