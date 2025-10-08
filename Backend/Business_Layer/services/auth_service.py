@@ -3,7 +3,7 @@ from fastapi import HTTPException, status, Request
 import requests
 import jwt
 from jwt import PyJWKClient
-from ...Api_Layer.interfaces.auth import RegisterUser, LoginUser, ForgotPassword
+from ...Api_Layer.interfaces.auth import RegisterUser, LoginUser, ForgotPassword,ChangePasswordFirstLogin
 from ...Data_Access_Layer.dao.auth_dao import AuthDAO
 from ...Api_Layer.JWT.token_creation.token_create import token_create
 from ..utils.password_utils import hash_password, check_password_or_raise, verify_password
@@ -216,26 +216,26 @@ class AuthService:
         dao.password_last_updated(user.user_id)
         return {"message": "Password updated and user activated"}
 
-    def change_password_first_login(self, payload: dict, user_id: int):
+    def change_password_first_login(self, payload:ChangePasswordFirstLogin , user_id: int):
 
         dao = self._get_dao()
 
-        user_email = payload.get("email")
+        user_email = payload.email
 
         user = dao.get_user_by_email(user_email)
 
         if user.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only change your own password")
 
-        old_password = payload.get("old_password")
-        new_password = payload.get("new_password")
+        new_password = payload.new_password
+        confirm_password = payload.confirm_password
         
 
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
-        if not verify_password(old_password, user.password):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Old password is incorrect")
+        if new_password != confirm_password:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
         
         validate_password_strength(new_password)
         new_hashed_password = hash_password(new_password)
