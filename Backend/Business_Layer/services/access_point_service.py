@@ -143,14 +143,13 @@ class AccessPointService:
         if 'endpoint_path' in update_dict or 'method' in update_dict:
             # Fetch the current record
             current_ap = self.dao.get_access_point_by_uuid(access_uuid)
-            if not current_ap:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Access point not found"
-                )
 
             # Use new values if present, else old values
             new_endpoint = update_dict.get('endpoint_path', current_ap.endpoint_path)
+            new_module = update_dict.get('module', current_ap.module)
+            new_is_public = update_dict.get('is_public', current_ap.is_public)
+            regex_pattern = self.normalize_endpoint(new_endpoint)
+            update_dict['regex_pattern'] = regex_pattern  # Update regex pattern if endpoint changes
             new_method = update_dict.get('method', current_ap.method)
 
             # Check if another access point already has same endpoint+method
@@ -165,24 +164,14 @@ class AccessPointService:
         current_ap = self.dao.get_access_point_by_uuid(access_uuid)
         updated_ap = self.dao.update_access_point(current_ap.access_id, **update_dict)
 
-        if not updated_ap:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Access point not found"
-            )
         
-        permission_uuid = updated_ap.permission_mappings[0].permission.permission_uuid if updated_ap.permission_mappings else None
 
         return AccessPointOut(
-            access_uuid=updated_ap.access_uuid,
-            endpoint_path=updated_ap.endpoint_path,
-            method=updated_ap.method,
-            module=updated_ap.module,
-            is_public=updated_ap.is_public,
-            permission_uuid=permission_uuid,
-            permission_code=updated_ap.permission_mappings[0].permission.permission_code if updated_ap.permission_mappings else None,
-            created_at=updated_ap.created_at,   
-            updated_at=updated_ap.updated_at
+            access_uuid=access_uuid,
+            endpoint_path=new_endpoint,
+            method=new_method,
+            module=new_module,
+            is_public=new_is_public
         )
 
 

@@ -78,38 +78,16 @@ class AccessPointDAO:
     def update_access_point(self, access_id: int, **data) -> Optional[AccessPoint]:
         now = datetime.utcnow()
         data['updated_at'] = now
-        ap = self.db.query(AccessPoint).filter_by(access_id=access_id).first()
+        ap = self.get_access_point_by_id(access_id)
         if not ap:
             return None
-
-        # 1. Update standard fields
-        access_point_fields = ['endpoint_path', 'method', 'module', 'is_public']
-        for field in access_point_fields:
-            if field in data and getattr(ap, field) != data[field]:
+        print(f"🔍 DEBUG: Updating AccessPoint ID {access_id} with data: {data}")
+        fields_to_update = ['endpoint_path', 'regex_pattern', 'method', 'module', 'is_public', 'updated_at']
+        for field in fields_to_update:
+            if field in data:
                 setattr(ap, field, data[field])
-
-        # 2. Update permission_code if provided
-        if 'permission_code' in data:
-            new_code = data['permission_code']
-
-            # Get mapping
-            mapping = (
-                self.db.query(AccessPointPermission)
-                .filter_by(access_id=access_id)
-                .first()
-            )
-
-            if mapping:
-                permission = (
-                    self.db.query(Permissions)
-                    .filter_by(permission_id=mapping.permission_id)
-                    .first()
-                )
-                if permission and permission.permission_code != new_code:
-                    permission.permission_code = new_code
-
         self.db.commit()
-        return ap
+        self.db.refresh(ap)
 
     def get_unmapped_access_points(self) -> List[AccessPoint]:
         """

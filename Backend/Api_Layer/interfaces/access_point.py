@@ -15,10 +15,7 @@ class AccessPointOut(BaseModel):
     method: Literal["GET", "POST", "PUT", "DELETE"]
     module: str
     is_public: Optional[bool] = False
-    permission_code: Optional[str] = None  # flattening from relationship
-    permission_uuid: Optional[str] = None  # flattening from relationship
-    created_at: datetime
-    updated_at: datetime
+
 
     class Config:
         from_attributes = True
