@@ -295,7 +295,7 @@ class UserService:
         capture_old_data=True,
         description="Deactivated user account"
     )
-    def deactivate_user_uuid(self, current_user, user_uuid):
+    def deactivate_user_uuid(self, user_uuid,current_user, **kwargs):
         current_user_roles = current_user['roles']
         user = self.dao.get_user_by_uuid(user_uuid)
         user_uuid = user.user_uuid

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy.orm import Session
@@ -38,29 +38,35 @@ def get_role_by_uuid(
 @router.post("", response_model=RoleOut)
 def create_role(
     role: RoleBase,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.create_role(role)
+    return service.create_role(role,current_user=current_user,
+            request=request)
 
 
 @router.put("/uuid/{role_uuid}", response_model=RoleOut)
 def update_role_by_uuid(
     role_uuid: str,
     role: RoleBase,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.update_role_by_uuid(role_uuid, role)
+    return service.update_role_by_uuid(role_uuid, role,current_user=current_user,
+            request=request)
 
 
 @router.delete("/uuid/{role_uuid}")
 def delete_role_by_uuid(
     role_uuid: str,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.delete_role_by_uuid(role_uuid)
+    return service.delete_role_by_uuid(role_uuid,current_user=current_user,
+            request=request)
 
 
 # --- Permission Group Management for Roles ---
@@ -94,28 +100,33 @@ def update_permission_groups_for_role(
 def update_permission_groups_for_role(
     role_uuid: str,
     payload: RoleGroupRequest,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.update_permission_groups_for_role_uuid(role_uuid, payload.group_uuids)
+    return service.update_permission_groups_for_role_uuid(role_uuid, payload.group_uuids,current_user=current_user,
+            request=request)
 
 @router.post("/uuid/{role_uuid}/groups")
 def add_permission_groups_to_role(
     role_uuid: str,
     payload: RoleGroupRequest,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.add_permission_groups_to_role(role_uuid, payload.group_uuids,current_user['user_id'])
+    return service.add_permission_groups_to_role(role_uuid, payload.group_uuids,current_user['user_id'],request=request,current_user=current_user)
 
 @router.delete("/{role_uuid}/groups/{group_uuid}")
 def remove_permission_group_from_role(
     role_uuid: str,
     group_uuid: str,
+    request: Request,
     service: RoleService = Depends(get_role_service),
     current_user: dict = Depends(get_current_user)
 ):
-    return service.remove_permission_group_from_role(role_uuid, group_uuid)
+    return service.remove_permission_group_from_role(role_uuid, group_uuid,current_user=current_user,
+            request=request)
 
 @router.get("/{role_uuid}/available-groups",response_model=List[Group])
 def get_unassigned_permission_groups_for_role(
