@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Data_Access_Layer.models import models
 from ...Data_Access_Layer.utils.database import SessionLocal
@@ -50,8 +51,16 @@ class UserService:
             })
         return result
 
-    def get_user_uuid(self, user_uuid):
-        return self.dao.get_user_by_uuid(user_uuid)
+    def get_user_uuid(self, current_user, user_uuid):
+        current_user_roles = current_user['roles']
+        user = self.dao.get_user_by_uuid(user_uuid)
+        user_uuid = user.user_uuid
+        user_roles = self.get_user_roles_by_uuid(user_uuid)
+        
+        if 'Super Admin' not in current_user_roles and 'Super Admin' in user_roles:
+            raise HTTPException(status_code=403, detail="Only Super Admins can edit Super Admin accounts.")
+        
+        return user
     
     def get_user(self, user_id):
         return self.dao.get_user_by_id(user_id)
@@ -286,8 +295,15 @@ class UserService:
         capture_old_data=True,
         description="Deactivated user account"
     )
-    def deactivate_user_uuid(self, user_uuid, **kwargs):
+    def deactivate_user_uuid(self, current_user, user_uuid):
+        current_user_roles = current_user['roles']
         user = self.dao.get_user_by_uuid(user_uuid)
+        user_uuid = user.user_uuid
+        user_roles = self.get_user_roles_by_uuid(user_uuid)
+        
+        if 'Super Admin' not in current_user_roles and 'Super Admin' in user_roles:
+            raise HTTPException(status_code=403, detail="Only Super Admins can delete Super Admin accounts.")
+        
         if not user:
             raise ValueError("User not found")
         self.dao.deactivate_user(user)
