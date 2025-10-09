@@ -98,7 +98,7 @@ class UserService:
 
         return created_user
 
-    
+
     
     def bulk_create_users(self, df: pd.DataFrame, created_by_user_id: int):
         def generate_password(first_name, contact):
@@ -171,7 +171,8 @@ class UserService:
             "failed_count": len(failed_rows),
             "failed_rows": failed_rows
         }
- 
+    
+
  
     @audit_action_with_request(
         action_type='UPDATE',
@@ -290,36 +291,92 @@ class UserService:
         if not user:
             raise ValueError("User not found")
         self.dao.deactivate_user(user)
-
+        
+    
     @audit_action_with_request(
-        action_type='ASSIGN_ROLE',
-        entity_type='User_Role',
-        get_entity_id=lambda self, user_uuid, *args, **kwargs: self.dao.get_user_by_uuid(user_uuid).user_id if self.dao.get_user_by_uuid(user_uuid) else None,
-        capture_old_data=True,
-        capture_new_data=True,
-        description="Updated user roles"
+    action_type='ASSIGN_ROLE',
+    entity_type='User_Role',
+    get_entity_id=lambda self, user_uuid, *args, **kwargs: (
+        self.dao.get_user_by_uuid(user_uuid).user_id
+        if self.dao.get_user_by_uuid(user_uuid) else None
+    ),
+    capture_old_data=False,
+    capture_new_data=False,
+    description="Updated user roles"
     )
-    def update_user_roles_uuid(self, user_uuid, role_uuids, updated_by_user_id: int, **kwargs):
+    def update_user_roles_uuid(self, user_uuid, role_uuids, updated_by_user_id: int, audit_data=None, **kwargs):
+        if audit_data is None:
+            audit_data = {}
+        
+        # Fetch the user
         user = self.dao.get_user_by_uuid(user_uuid)
         if not user:
             raise ValueError("User not found")
-
+        
         if not user.is_active:
             raise ValueError("Cannot update roles for inactive user")
-
-        self.dao.clear_roles(user.user_id)
-
+        
+        # ----- Capture old roles (for audit display) -----
+        old_roles = self.get_user_roles(user.user_id)  # Role names/details for audit
+        audit_data['old_data'] = {"roles": old_roles}
+        
+        # ----- Get current role UUIDs -----
+        current_roles_uuids = self.get_user_roles_by_uuid(user.user_id)
+        current_role_set = set(current_roles_uuids)
+        
+        # ----- Handle empty role_uuids (assign General role) -----
         if not role_uuids:
             general_role = self.db.query(models.Role).filter_by(role_name="General").first()
             if not general_role:
                 raise RuntimeError("'General' role not found")
-            self.dao.assign_role_uuid(user.user_id, general_role.role_uuid, updated_by_user_id)
-            return "No roles provided. Assigned 'General' role."
-
-        for role_id in role_uuids:
-            self.dao.assign_role_uuid(user.user_id, role_id, updated_by_user_id)
-
+            role_uuids = [general_role.role_uuid]
+        
+        # ----- Validate and deduplicate incoming role_uuids -----
+        # Remove duplicates from input and convert to set
+        new_role_set = set(role_uuids)
+        
+        # ----- Calculate differences using set operations -----
+        roles_to_add = new_role_set - current_role_set      # New roles to assign
+        roles_to_remove = current_role_set - new_role_set   # Roles to remove
+        
+        # ----- Remove roles that are no longer needed -----
+        if roles_to_remove:
+            for role_uuid in roles_to_remove:
+                self.dao.remove_role_by_uuid(user.user_id, role_uuid)
+        
+        # ----- Add only new roles (preserves existing roles' assigned_by) -----
+        if roles_to_add:
+            for role_uuid in roles_to_add:
+                # Double-check role doesn't exist before inserting (safety check)
+                existing = self.db.query(models.User_Role).join(models.Role).filter(
+                    models.User_Role.user_id == user.user_id,
+                    models.Role.role_uuid == role_uuid
+                ).first()
+                
+                if not existing:
+                    self.dao.assign_role_uuid(user.user_id, role_uuid, updated_by_user_id)
+        
+        # ----- Capture new roles for audit -----
+        # Only query if there were actual changes
+        if roles_to_add or roles_to_remove:
+            new_roles = self.get_user_roles(user.user_id)
+        else:
+            new_roles = old_roles  # No changes, reuse old data
+        
+        audit_data['new_data'] = {"roles": new_roles}
+        
+        # ----- Return meaningful message -----
+        if not roles_to_add and not roles_to_remove:
+            return "No role changes needed"
+        
+        changes = []
+        if roles_to_add:
+            changes.append(f"{len(roles_to_add)} role(s) added")
+        if roles_to_remove:
+            changes.append(f"{len(roles_to_remove)} role(s) removed")
+        
         return "Roles updated successfully"
+
     
     @audit_action_with_request(
         action_type='ASSIGN_ROLE',

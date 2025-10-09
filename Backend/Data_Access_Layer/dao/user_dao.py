@@ -165,6 +165,12 @@ class UserDAO:
             .filter(models.User_Role.user_id == user_id).all()
         return [role[0] for role in roles]
     
+    def get_user_roles_uuids(self, user_id: int) -> List[str]:
+        roles = self.db.query(models.Role.role_uuids)\
+            .join(models.User_Role)\
+            .filter(models.User_Role.user_id == user_id).all()
+        return [role[0] for role in roles]
+    
     def get_user_roles_by_uuid(self, user_uuid: str) -> List[str]:
         user = self.get_user_by_uuid(user_uuid)
 
@@ -194,18 +200,42 @@ class UserDAO:
             self.db.rollback()
             raise
  
-    def assign_role_uuid(self, user_id: int, role_uuid: str,updated_by_user_id) -> None:
+    def assign_role_uuid(self, user_id: int, role_uuid: str, assigned_by: int):
+        """
+        Assign a role to user (with duplicate prevention).
+        Update this in your DAO class to include duplicate check.
+        """
+        from datetime import datetime
+        
+        # Get role by UUID
+        role = self.db.query(models.Role).filter_by(role_uuid=role_uuid).first()
+        if not role:
+            raise ValueError(f"Role with UUID {role_uuid} not found")
+        
+        # Check if already assigned (prevent duplicates)
+        existing = self.db.query(models.User_Role).filter_by(
+            user_id=user_id,
+            role_id=role.role_id
+        ).first()
+        
+        if existing:
+            # Already assigned, skip silently
+            return
+        
+        # Create new assignment
+        user_role = models.User_Role(
+            user_id=user_id,
+            role_id=role.role_id,
+            assigned_by=assigned_by,
+            assigned_at=datetime.utcnow()
+        )
+        
         try:
-            now = datetime.utcnow()
-            role_ids = self.db.query(models.Role.role_id).filter_by(role_uuid=role_uuid).first()
-            if not role_ids:
-                raise ValueError(f"Role with UUID {role_uuid} not found")
-            new_assignment = models.User_Role(user_id=user_id, role_id=role_ids[0],assigned_by=updated_by_user_id, assigned_at=now)
-            self.db.add(new_assignment)
+            self.db.add(user_role)
             self.db.commit()
-        except SQLAlchemyError:
+        except Exception as e:
             self.db.rollback()
-            raise
+            raise e
 
     def assign_role(self, user_id: int, role_id: int,updated_by_user_id) -> None:
         try:
@@ -307,4 +337,28 @@ class UserDAO:
         except SQLAlchemyError as e:
             self.db.rollback()
             raise e
- 
+        
+    def remove_role_by_uuid(self, user_id: int, role_uuid: str):
+        """
+        Remove a specific role from a user by role UUID.
+        Add this to your DAO class.
+        """
+        try:
+            # Get role_id from role_uuid
+            role = self.db.query(models.Role).filter_by(role_uuid=role_uuid).first()
+            if not role:
+                return  # Role doesn't exist, nothing to remove
+            
+            # Delete the user_role entry
+            user_role = self.db.query(models.User_Role).filter_by(
+                user_id=user_id,
+                role_id=role.role_id
+            ).first()
+            
+            if user_role:
+                self.db.delete(user_role)
+                self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            raise e
+    
