@@ -47,12 +47,10 @@ def get_user(
     current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
-    user = user_service.get_user_uuid(user_uuid)
+    user = user_service.get_user_uuid(current_user, user_uuid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
-
-
 
 @router.post("", response_model=UserOut)
 def create_user(
@@ -108,7 +106,7 @@ def deactivate_user(
     user_service: UserService = Depends(get_user_service)
 ):
     try:
-        user_service.deactivate_user_uuid(user_uuid)
+        user_service.deactivate_user_uuid(current_user, user_uuid)
         return {"message": "User deactivated successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
