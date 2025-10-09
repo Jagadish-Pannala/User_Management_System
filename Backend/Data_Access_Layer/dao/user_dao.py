@@ -296,9 +296,6 @@ class UserDAO:
                 user.created_at = now
             user.updated_at = now
 
-            # Optional: if creating password at the same time
-            if hasattr(user, "password_last_updated") and user.password is not None:
-                user.password_last_updated = now
 
             self.db.add(user)
             self.db.commit()
