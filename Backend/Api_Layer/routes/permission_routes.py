@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ...Business_Layer.services.permission_service import PermissionService
 from ..interfaces.permission_management import (
@@ -48,22 +48,26 @@ def get_permission(
 @router.post("", status_code=201)
 def create_permission(
     payload: PermissionCreate,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.create_permission_minimal(
-        payload.permission_code, payload.description, payload.group_uuid
+        payload.permission_code, payload.description, payload.group_uuid,current_user=current_user,
+            request=request
     )
 
 
 @router.post("/", status_code=201)
 def create_permission_basic(
     permission: PermissionBaseCreation,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.create_permission_minimal(
-        permission.permission_code, permission.description
+        permission.permission_code, permission.description,current_user=current_user,
+            request=request
     )
 
 
@@ -71,11 +75,13 @@ def create_permission_basic(
 def update_permission(
     permission_uuid: str,
     payload: PermissionBaseCreation,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     result = service.update_permission(
-        permission_uuid, payload.permission_code, payload.description
+        permission_uuid, payload.permission_code, payload.description,current_user=current_user,
+            request=request
     )
     
     # Convert SQLAlchemy object to Pydantic model
@@ -90,10 +96,12 @@ def update_permission(
 @router.delete("/{permission_uuid}")
 def delete_permission(
     permission_uuid: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    service.delete_permission(permission_uuid)
+    service.delete_permission(permission_uuid,current_user=current_user,
+            request=request)
     return {"message": "Permission deleted successfully"}
 
 
