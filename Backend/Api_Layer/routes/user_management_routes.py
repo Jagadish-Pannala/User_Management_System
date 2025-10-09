@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from ..interfaces.user_management import UserBase, UserOut, UserRoleUpdate, UserWithRoleNames, UserBaseIn, UserOut_uuid, UserWithRoleNames_id
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
+import pandas as pd
+from io import BytesIO
 
 router = APIRouter()
 
@@ -74,6 +76,28 @@ def create_user(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+@router.post("/multiple-users", response_model=dict)
+async def bulk_create_users(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        context = await file.read()
+        df = pd.read_excel(BytesIO(context))
+
+        required_cols = {"first_name", "last_name", "mail", "contact"}
+        if not required_cols.issubset(df.columns):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required columns. Expected: {', '.join(required_cols)}"
+            )
+
+        result = user_service.bulk_create_users(df, created_by_user_id=current_user["user_id"])
+        return result
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{user_id}", response_model=UserOut)
 def update_user(

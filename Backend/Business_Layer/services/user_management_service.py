@@ -10,6 +10,10 @@ from ..utils.generate_uuid7 import generate_uuid7
 from ..utils.audit_decorator import audit_action_with_request
 
 
+from ...Api_Layer.interfaces.user_management import UserBaseIn
+import pandas as pd
+ 
+ 
 class UserService:
     def __init__(self, db: Session):
         self.db = db
@@ -94,6 +98,81 @@ class UserService:
 
         return created_user
 
+    
+    
+    def bulk_create_users(self, df: pd.DataFrame, created_by_user_id: int):
+        def generate_password(first_name, contact):
+            contact_str = str(contact)  # ensure it’s a string
+            return f"{first_name[:4]}@{contact_str[-4:]}"
+
+        created_users = []
+        failed_rows = []
+
+        # Optional: fetch "General" role once, not for each user
+        general_role = self.dao.get_role_by_name("General")
+        if not general_role:
+            raise ValueError("Role 'General' not found")
+
+        for index, row in df.iterrows():
+            try:
+                # Build schema manually
+                user_schema = UserBaseIn(
+                    first_name=row["first_name"],
+                    last_name=row["last_name"],
+                    mail=row["mail"],
+                    contact=str(row["contact"]),
+                    password=generate_password(row["first_name"], row["contact"]),  # default if not given
+                    is_active=True
+                )
+
+                # Reuse same validation logic
+                existing = self.dao.get_user_by_email(user_schema.mail)
+                if existing:
+                    raise ValueError(f"User with email {user_schema.mail} already exists")
+
+                validate_email_format(user_schema.mail)
+                validate_name(user_schema.first_name)
+                validate_name(user_schema.last_name)
+                validate_contact_number(user_schema.contact)
+                validate_password_strength(user_schema.password)
+
+                hashed_password = hash_password(user_schema.password)
+
+                new_user = models.User(
+                    user_uuid=generate_uuid7(),
+                    first_name=user_schema.first_name,
+                    last_name=user_schema.last_name,
+                    mail=user_schema.mail,
+                    contact=user_schema.contact,
+                    password=hashed_password,
+                    is_active=True
+                )
+
+                # Step 1: Create user
+                created_user = self.dao.create_user(new_user)
+
+                # Step 2: Map default role
+                self.dao.map_user_role(created_user.user_id, general_role.role_id, created_by_user_id)
+
+                # Step 3: Send welcome mail
+                send_welcome_email(user_schema.mail, user_schema.first_name, user_schema.password)
+
+                created_users.append(created_user)
+
+            except Exception as e:
+                failed_rows.append({
+                    "row_number": index + 2,  # Excel rows start at 2
+                    "mail": row.get("mail"),
+                    "error": str(e)
+                })
+
+        return {
+            "created_count": len(created_users),
+            "failed_count": len(failed_rows),
+            "failed_rows": failed_rows
+        }
+ 
+ 
     @audit_action_with_request(
         action_type='UPDATE',
         entity_type='User',

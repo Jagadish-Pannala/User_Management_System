@@ -277,6 +277,21 @@ class UserDAO:
         except SQLAlchemyError:
             self.db.rollback()
             raise
+    def bulk_create_users(self, users: list[models.User]):
+        try:
+            now = datetime.utcnow()
+            for u in users:
+                if not hasattr(u, "created_at") or u.created_at is None:
+                    u.created_at = now
+                u.updated_at = now
+                if hasattr(u, "password_last_updated") and u.password is not None:
+                    u.password_last_updated = now
+            self.db.bulk_save_objects(users)
+            self.db.commit()
+        except SQLAlchemyError:
+            self.db.rollback()
+            raise
+
  
     def map_user_role(self, user_id: int, role_id: int, created_by_user_id: int) -> None:
         try:
