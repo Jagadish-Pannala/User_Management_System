@@ -166,7 +166,7 @@ class UserDAO:
         return [role[0] for role in roles]
     
     def get_user_roles_uuids(self, user_id: int) -> List[str]:
-        roles = self.db.query(models.Role.role_uuids)\
+        roles = self.db.query(models.Role.role_uuid)\
             .join(models.User_Role)\
             .filter(models.User_Role.user_id == user_id).all()
         return [role[0] for role in roles]

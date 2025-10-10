@@ -337,7 +337,8 @@ class UserService:
         audit_data['old_data'] = {"roles": old_roles}
         
         # ----- Get current role UUIDs -----
-        current_roles_uuids = self.get_user_roles_by_uuid(user.user_id)
+        current_roles_uuids = self.dao.get_user_roles_uuids(user.user_id)
+        print("Current roles in DB:", current_roles_uuids)
         current_role_set = set(current_roles_uuids)
         
         # ----- Handle empty role_uuids (assign General role) -----
@@ -350,10 +351,12 @@ class UserService:
         # ----- Validate and deduplicate incoming role_uuids -----
         # Remove duplicates from input and convert to set
         new_role_set = set(role_uuids)
-        
+        print("New roles requested:", new_role_set)
+        print("Current roles:", current_role_set)
         # ----- Calculate differences using set operations -----
         roles_to_add = new_role_set - current_role_set      # New roles to assign
         roles_to_remove = current_role_set - new_role_set   # Roles to remove
+        print(roles_to_add, roles_to_remove)
         
         # ----- Remove roles that are no longer needed -----
         if roles_to_remove:
@@ -427,8 +430,8 @@ class UserService:
     def get_user_roles(self, user_id):
         return [r for r in self.dao.get_user_roles(user_id)]
     
-    def get_user_roles_by_uuid(self, user_id):
-        return [r for r in self.dao.get_user_roles_by_uuid(user_id)]
+    def get_user_roles_by_uuid(self, user_uuid):
+        return [r for r in self.dao.get_user_roles_by_uuid(user_uuid)]
     
     def update_user_profile(self, user_id, profile_data):
         user = self.dao.get_user_by_id(user_id)
