@@ -40,20 +40,32 @@ class PermissionGroupService:
         return result
 
 
-    def update_group(self, group_uuid: str, group_name: str):
-        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
-        df_group_uuid = default_group.group_uuid
-        if group_uuid == df_group_uuid :
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot update the default permission group"
-            )
+    @audit_action_with_request(
+    action_type='UPDATE',
+    entity_type='Permission_Group',
+    capture_old_data=True,
+    capture_new_data=True,
+    description="Updated permission group"
+    )
+    def update_group(self, group_uuid: str, group_name: str,**kwargs):
+        audit_data = kwargs.get('audit_data', {})
         # Get current group
         current = self.dao.get_group_by_uuid(group_uuid)
         if not current:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Group not found"
+            )
+        
+        # Set entity_id for audit
+        audit_data['entity_id'] = current.group_id
+        audit_data['old_data'] = {"group_id": current.group_id, "group_name": current.group_name, "group_uuid": current.group_uuid, "created_by": current.created_by, "created_at": str(current.created_at)}
+        # Check if it's the default group
+        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
+        if current.group_uuid == default_group.group_uuid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot update the default permission group"
             )
 
         # If the name is changing, check if another group already has it
@@ -70,19 +82,31 @@ class PermissionGroupService:
         return updated_group
 
 
-    def delete_group(self, group_uuid: str):
-        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
-        df_group_id = default_group.group_uuid
-        if group_uuid == df_group_id :
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot delete the default permission group"
-            )
+    @audit_action_with_request(
+    action_type='DELETE',
+    entity_type='Permission_Group',
+    capture_old_data=True,
+    description="Deleted permission group"
+    )
+    def delete_group(self, group_uuid: str,**kwargs):
+        audit_data = kwargs.get('audit_data', {})
+        # Fetch group once
         group = self.dao.get_group_by_uuid(group_uuid)
         if not group:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Permission group  not found"
+                detail=f"Permission group not found"
+            )
+        
+        # Set entity_id for audit
+        audit_data['entity_id'] = group.group_id  # ← Manually set the ID
+        
+        # Check if it's the default group
+        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
+        if group.group_uuid == default_group.group_uuid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot delete the default permission group"
             )
 
         try:
@@ -103,6 +127,7 @@ class PermissionGroupService:
                 detail=f"Failed to delete permission group: {str(e)}"
             )
 
+        audit_data['old_data'] = {"group_id": group.group_id, "group_name": group.group_name, "group_uuid": group.group_uuid, "created_by": group.created_by, "created_at": str(group.created_at)}
         return {"message": f"Permission group deleted successfully"}
 
     def delete_group_cascade(self, group_uuid: str):
@@ -119,7 +144,14 @@ class PermissionGroupService:
 
     # services/permission_group_service.py
 
-    def add_permissions_to_group(self, group_uuid: str, permission_uuids: list[str],assigned_by: int):
+    @audit_action_with_request(
+    action_type='CREATE',
+    entity_type='Permission_Group_Mapping',
+    capture_new_data=False,  # We'll manually set the data
+    description="Added permissions to group"
+    )
+    def add_permissions_to_group(self, group_uuid: str, permission_uuids: list[str], assigned_by: int,**kwargs):
+        audit_data = kwargs.get('audit_data', {})
         group = self.dao.get_group_by_uuid(group_uuid)
         if not group:   
             raise HTTPException(status_code=404, detail="Permission group not found")
@@ -127,19 +159,47 @@ class PermissionGroupService:
 
         # Validate permission UUIDs and get their IDs
         permission_ids = []
+        permission_codes = []  # For audit trail
+        permissions_dict = {}
         for puid in permission_uuids:
             perm = self.dao.get_permission_by_uuid(puid)
             if not perm:
                 raise ValueError(f"Permission with UUID {puid} not found")
             permission_ids.append(perm.permission_id)
-        
+            permission_codes.append(perm.permission_code)
+            
+            # Serialize the permission object to a dict
+            permissions_dict[perm.permission_id] = {
+                "permission_code": perm.permission_code,
+                "description": perm.description,
+                "permission_uuid": perm.permission_uuid
+            }
+
         # Add permissions to group
-        new_mappings = self.dao.add_permissions_to_group(group_id, permission_ids,assigned_by)
+        new_mappings = self.dao.add_permissions_to_group(group_id, permission_ids, assigned_by)
+
+        # Set audit data
+        audit_data['entity_id'] = group_id  # The group being modified
+        audit_data['new_data'] = {
+            "group_id": group_id,
+            "group_name": group.group_name,
+            "added_permissions": permissions_dict,  # Now JSON-serializable
+            "permission_count": len(new_mappings),
+            "assigned_by": assigned_by
+        }
+        
         # Return full permission objects for response
         return self.dao.get_permissions_by_ids([m.permission_id for m in new_mappings])
 
 
-    def remove_permissions_from_group(self, group_uuid: str, permission_uuids: list[str]):
+    @audit_action_with_request(
+    action_type='DELETE',
+    entity_type='Permission_Group_Mapping',
+    capture_old_data=False,  # We'll manually capture what's being removed
+    description="Removed permissions from group"
+    )
+    def remove_permissions_from_group(self, group_uuid: str, permission_uuids: list[str],**kwargs):
+        audit_data = kwargs.get('audit_data', {})
         group = self.dao.get_group_by_uuid(group_uuid)
         if not group:   
             raise HTTPException(status_code=404, detail="Permission group not found")
@@ -147,13 +207,34 @@ class PermissionGroupService:
 
         # Validate permission UUIDs and get their IDs
         permission_ids = []
+        permissions_list = []
         for puid in permission_uuids:
             perm = self.dao.get_permission_by_uuid(puid)
             if not perm:
                 raise ValueError(f"Permission with UUID {puid} not found")
             permission_ids.append(perm.permission_id)
+            permissions_list.append({
+                "permission_id": perm.permission_id,
+                "permission_code": perm.permission_code,
+                "description": perm.description
+            })
 
-        return self.dao.remove_permissions_from_group(group_id, permission_ids)
+        # Remove permissions from group
+        result = self.dao.remove_permissions_from_group(group_id, permission_ids)
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="No matching permissions found in this group")
+        
+        # Set audit data
+        audit_data['entity_id'] = group_id
+        audit_data['old_data'] = {
+            "group_id": group_id,
+            "group_name": group.group_name,
+            "removed_permissions": permissions_list,
+            "permission_count": len(permissions_list)
+        }
+        
+        return {"message": f"Successfully removed {len(permissions_list)} permission(s) from group"}
 
     def get_permission_by_code(self, code: str):
         return self.dao.get_permission_by_code(code)

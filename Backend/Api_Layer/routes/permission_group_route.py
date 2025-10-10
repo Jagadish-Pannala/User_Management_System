@@ -68,10 +68,11 @@ def create_group(
 def update_group(
     group_uuid: str,
     group: GroupIn,
+    request: Request,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    updated = service.update_group(group_uuid, group.group_name)
+    updated = service.update_group(group_uuid, group.group_name,request=request,current_user=current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Group not found")
     return updated
@@ -80,11 +81,12 @@ def update_group(
 @router.delete("/{group_uuid}", status_code=204)
 def delete_group(
     group_uuid: str,
+    request: Request,
     cascade: bool = Query(default=False, description="Delete group and its mappings"),
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    deleted = service.delete_group_cascade(group_uuid) if cascade else service.delete_group(group_uuid)
+    deleted = service.delete_group_cascade(group_uuid) if cascade else service.delete_group(group_uuid,request=request,current_user=current_user)
     if not deleted:
         raise HTTPException(status_code=404, detail="Group not found")
 
@@ -108,11 +110,12 @@ def get_permissions_in_group(
 def add_permissions_to_group(
     group_uuid: str,
     permission_uuids: List[str],
+    request: Request,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        return service.add_permissions_to_group(group_uuid, permission_uuids,current_user['user_id'])
+        return service.add_permissions_to_group(group_uuid, permission_uuids,current_user['user_id'],request=request,current_user=current_user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -123,10 +126,11 @@ def add_permissions_to_group(
 def remove_permissions_from_group(
     group_uuid: str,
     permission_uuids: List[str],  # query param or body
+    request: Request,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
-    removed = service.remove_permissions_from_group(group_uuid, permission_uuids)
+    removed = service.remove_permissions_from_group(group_uuid, permission_uuids,request=request,current_user=current_user)
     if not removed:
         raise HTTPException(status_code=404, detail="No matching permission mappings found.")
     
