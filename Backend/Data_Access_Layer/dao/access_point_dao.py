@@ -63,6 +63,7 @@ class AccessPointDAO:
         return self.db.query(AccessPoint).options(
             joinedload(AccessPoint.permission_mappings).joinedload(AccessPointPermission.permission)
         ).filter_by(access_uuid=access_uuid).first()
+        
 
 
     def get_all_access_points(self) -> List[AccessPoint]:
@@ -88,6 +89,8 @@ class AccessPointDAO:
                 setattr(ap, field, data[field])
         self.db.commit()
         self.db.refresh(ap)
+
+        return ap
     
     def update_access_point_permission(self, access_id: int, permission_code: Optional[str]) -> Optional[AccessPointPermission]:
         app = self.db.query(AccessPointPermission).filter_by(access_id=access_id).first()

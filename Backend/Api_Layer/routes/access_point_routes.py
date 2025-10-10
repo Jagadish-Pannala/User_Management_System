@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends,Request
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -44,10 +44,11 @@ def get_unmapped_permissions(
 @router.post("/", response_model=CreateAPResponse)
 def create_ap(
     data: AccessPointCreate,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.create_access_point(data,created_by_user_id=current_user['user_id'])
+    return service.create_access_point(data,created_by_user_id=current_user['user_id'],request=request,current_user=current_user)
 
 
 @router.get("/", response_model=List[AccessPointOut])
@@ -71,46 +72,51 @@ def get_ap(
 def update_ap(
     access_uuid: str,
     data: AccessPointUpdate,
-    _: dict = Depends(get_current_user),
+    request: Request,
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.update(access_uuid, data)
+    return service.update(access_uuid, data,request=request,current_user=current_user)
 
 
 @router.delete("/{access_uuid}")
 def delete_ap(
     access_uuid: str,
-    _: dict = Depends(get_current_user),
+    request: Request,
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.delete(access_uuid)
+    return service.delete(access_uuid,request=request,current_user=current_user)
 
 
 @router.post("/{access_uuid}/map-permission/{permission_uuid}")
 def map_permission(
     access_uuid: str,
     permission_uuid: str,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.map_permission(access_uuid, permission_uuid,current_user['user_id'])
+    return service.map_permission(access_uuid, permission_uuid,current_user['user_id'],request=request,current_user=current_user)
 
 
 @router.delete("/{access_uuid}/unmap-permission/{permission_uuid}")
 def unmap_permission(
     access_uuid: str,
     permission_uuid: str,
-    _: dict = Depends(get_current_user),
+    request: Request,
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.unmap_permission_both(access_uuid, permission_uuid)
+    return service.unmap_permission_both(access_uuid, permission_uuid,request=request,current_user=current_user)
 
 
 @router.post("{access_uuid}/map-permission")
 def map_permission_new(
     access_uuid: str,
     data: PermissionMappingIn,
-    _: dict = Depends(get_current_user),
+    request: Request,
+    current_user: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
-    return service.map_permission(access_uuid, data.permission_uuid)
+    return service.map_permission(access_uuid, data.permission_uuid,current_user['user_id'],request=request,current_user=current_user)
