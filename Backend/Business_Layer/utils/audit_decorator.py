@@ -60,6 +60,10 @@ def audit_action_with_request(
             old_data = audit_data.get("old_data")
             new_data = audit_data.get("new_data")
             
+            # Check if function manually set entity_id
+            if "entity_id" in audit_data:
+                entity_id = audit_data["entity_id"]
+            
             # Only auto-capture if not manually set by the function
             if new_data is None and capture_new_data:
                 new_data, entity_id = _capture_new_data(result, db, entity_type, entity_id)
@@ -145,9 +149,25 @@ def _capture_new_data(result, db: Session, entity_type: str, entity_id: Any):
     new_data = None
     if hasattr(result, "__dict__"):
         new_data = _serialize_entity(result)
-        id_field = f"{entity_type.lower()}_id"
-        if hasattr(result, id_field):
-            entity_id = getattr(result, id_field)
+        # Try multiple ID field naming conventions
+        # e.g., for 'Permission_Group': permission_group_id, group_id, id
+        entity_lower = entity_type.lower()
+        
+        # Extract last word after underscore for shortened version (e.g., Permission_Group -> group)
+        last_part = entity_lower.split('_')[-1] if '_' in entity_lower else entity_lower
+        
+        possible_id_fields = [
+            f"{entity_lower}_id",           # permission_group_id
+            f"{last_part}_id",               # group_id
+            'id',                            # id
+            f"{entity_lower.replace('_', '')}_id"  # permissiongroup_id
+        ]
+        
+        for field in possible_id_fields:
+            if hasattr(result, field):
+                entity_id = getattr(result, field)
+                if entity_id is not None:
+                    break
     elif isinstance(result, dict):
         new_data = result
         if not entity_id:

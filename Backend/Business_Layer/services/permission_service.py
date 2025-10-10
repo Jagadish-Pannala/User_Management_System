@@ -20,10 +20,7 @@ class PermissionService:
 
     @audit_action_with_request(
     action_type='CREATE',
-    entity_type='Permission',
-    get_entity_id=lambda self, *args, **kwargs: (
-        kwargs.get("permission_uuid")  # capture after creation
-    ),
+    entity_type='Permissions',
     description='Created new permission'
     )
     def create_permission_minimal(
@@ -79,6 +76,7 @@ class PermissionService:
             # ✅ Inject permission_uuid into kwargs for the audit decorator
             kwargs["permission_uuid"] = permission.permission_uuid
 
+            audit_data['entity_id'] = permission.permission_id
             audit_data['new_data'] = {
                 "permission_id": permission.permission_id, 
                 "permission_code": permission.permission_code,
@@ -115,7 +113,7 @@ class PermissionService:
 
     @audit_action_with_request(
     action_type='UPDATE',
-    entity_type='Permission',
+    entity_type='Permissions',
     get_entity_id=lambda self, permission_uuid, *args, **kwargs: (
         self.dao.get_by_uuid(permission_uuid).permission_id
         if self.dao.get_by_uuid(permission_uuid)
@@ -169,7 +167,7 @@ class PermissionService:
 
     @audit_action_with_request(
     action_type='DELETE',
-    entity_type='Permission',
+    entity_type='Permissions',
     get_entity_id=lambda self, permission_uuid, *args, **kwargs: (
         self.dao.get_by_uuid(permission_uuid).permission_id
         if self.dao.get_by_uuid(permission_uuid)

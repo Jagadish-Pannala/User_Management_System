@@ -3,6 +3,7 @@ from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
 from ...Data_Access_Layer.utils.dependency import SessionLocal  # SQLAlchemy session factory
 from fastapi import HTTPException, status
 from ..utils.generate_uuid7 import generate_uuid7
+from ..utils.audit_decorator import audit_action_with_request
 
 class PermissionGroupService:
     def __init__(self, db: Session):
@@ -15,12 +16,29 @@ class PermissionGroupService:
 
     def get_group(self, group_id: int):
         return self.dao.get_group_by_uuid(group_id)
+    
 
-    def create_group(self, group_name: str,created_by: int):
+    @audit_action_with_request(
+    action_type='CREATE',
+    entity_type='Permission_Group',
+    capture_old_data=False,
+    capture_new_data=True,
+    description='Created new permission group'
+    )
+    def create_group(self, group_name: str, created_by: int,**kwargs):
         existing = self.dao.get_group_by_name(group_name)
         if existing:
             raise ValueError("Group name already exists")
-        return self.dao.create_group(group_name,generate_uuid7(),created_by)
+
+        result = self.dao.create_group(group_name, generate_uuid7(), created_by)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create permission group"
+            )
+
+        return result
+
 
     def update_group(self, group_uuid: str, group_name: str):
         default_group = self.dao.get_group_by_name("newly_created_permissions_group")

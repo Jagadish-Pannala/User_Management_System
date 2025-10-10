@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query,Request
 from typing import List
 from ..interfaces.permissiongroup import GroupBase, GroupOut, PermissionInGroupwithId,GroupIn
 from ...Business_Layer.services.permission_group_service import PermissionGroupService
@@ -54,11 +54,12 @@ def get_group(
 @router.post("", response_model=GroupOut, status_code=201)
 def create_group(
     group: GroupIn,
+    request: Request,
     service: PermissionGroupService = Depends(get_permission_group_service),
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        return service.create_group(group.group_name,current_user['user_id'])
+        return service.create_group(group.group_name,current_user['user_id'],request=request,current_user=current_user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
