@@ -45,7 +45,7 @@ def get_permission(
     return service.get_permission(permission_uuid)
 
 
-@router.post("", status_code=201)
+@router.post("/group", status_code=201)
 def create_permission(
     payload: PermissionCreate,
     request: Request,
