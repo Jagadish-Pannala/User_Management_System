@@ -16,6 +16,7 @@ class AccessPointOut(BaseModel):
     module: str
     is_public: Optional[bool] = False
     permission_code: Optional[str] = None
+    permission_uuid: Optional[UUID] = None
 
 
     class Config:
