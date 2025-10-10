@@ -15,6 +15,7 @@ class AccessPointOut(BaseModel):
     method: Literal["GET", "POST", "PUT", "DELETE"]
     module: str
     is_public: Optional[bool] = False
+    permission_code: Optional[str] = None
 
 
     class Config:

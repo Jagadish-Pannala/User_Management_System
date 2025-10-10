@@ -88,6 +88,52 @@ class AccessPointDAO:
                 setattr(ap, field, data[field])
         self.db.commit()
         self.db.refresh(ap)
+    
+    def update_access_point_permission(self, access_id: int, permission_code: Optional[str]) -> Optional[AccessPointPermission]:
+        app = self.db.query(AccessPointPermission).filter_by(access_id=access_id).first()
+
+        # --- DELETE LOGIC ---
+        if permission_code in ("Null", None, "", "null"):
+            if app:
+                try:
+                    self.db.delete(app)
+                    self.db.commit()
+                except Exception as e:
+                    self.db.rollback()
+            else:
+                print(f"No mapping found for access_id={access_id}")
+            return None
+
+        # --- UPDATE / CREATE LOGIC ---
+        permission = self.db.query(Permissions).filter_by(permission_code=permission_code).first()
+        if not permission:
+            print(f"Permission not found: {permission_code}")
+            return None
+
+        if app:
+            app.permission_id = permission.permission_id
+            app.assigned_at = datetime.utcnow()
+        else:
+            app = AccessPointPermission(
+                access_id=access_id,
+                permission_id=permission.permission_id,
+                assigned_at=datetime.utcnow()
+            )
+            self.db.add(app)
+
+        self.db.commit()
+        self.db.refresh(app)
+        return app
+
+    def get_permission_code_by_access_id(self, access_id: int) -> Optional[str]:
+        app = self.db.query(AccessPointPermission).filter_by(access_id=access_id).first()
+        if not app:
+            return None
+
+        permission = self.db.query(Permissions).filter_by(permission_id=app.permission_id).first()
+        # Ensure we return a single string, not a list or tuple
+        return permission.permission_code if permission else None
+
 
     def get_unmapped_access_points(self) -> List[AccessPoint]:
         """

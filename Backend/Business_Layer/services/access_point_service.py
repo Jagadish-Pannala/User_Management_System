@@ -139,40 +139,66 @@ class AccessPointService:
     def update(self, access_uuid: str, data: AccessPointUpdate):
         update_dict = data.dict(exclude_unset=True)
 
-        # --- Check for duplicate endpoint before updating ---
+        # --- Fetch the existing access point ---
+        current_ap = self.dao.get_access_point_by_uuid(access_uuid)
+        if not current_ap:
+            raise HTTPException(status_code=404, detail="Access point not found")
+
+        # --- Handle permission logic ---
+        new_permission_code = update_dict.get("permission_code", None)
+
+        if "permission_code" in update_dict:
+            if new_permission_code == "Null" or new_permission_code is None or new_permission_code == "":
+                # ✅ User wants to delete permission mapping
+                self.dao.update_access_point_permission(current_ap.access_id, "Null")
+            else:
+                # ❌ User tried to change/add permission (not allowed)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="You can only delete permission mappings, not modify or add new ones"
+                )
+            # Remove permission_code from update_dict so it's not updated in AccessPoint
+            del update_dict["permission_code"]
+
+        # --- Handle endpoint/method changes ---
         if 'endpoint_path' in update_dict or 'method' in update_dict:
-            # Fetch the current record
-            current_ap = self.dao.get_access_point_by_uuid(access_uuid)
-
-            # Use new values if present, else old values
             new_endpoint = update_dict.get('endpoint_path', current_ap.endpoint_path)
-            new_module = update_dict.get('module', current_ap.module)
-            new_is_public = update_dict.get('is_public', current_ap.is_public)
-            regex_pattern = self.normalize_endpoint(new_endpoint)
-            update_dict['regex_pattern'] = regex_pattern  # Update regex pattern if endpoint changes
             new_method = update_dict.get('method', current_ap.method)
+            regex_pattern = self.normalize_endpoint(new_endpoint)
+            update_dict['regex_pattern'] = regex_pattern
 
-            # Check if another access point already has same endpoint+method
+            # Check for duplicate (endpoint_path + method)
             existing = self.dao.get_access_point_by_path_and_method(new_endpoint, new_method)
             if existing and existing.access_uuid != access_uuid:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Another access point with this endpoint and method already exists"
                 )
+        else:
+            new_endpoint = current_ap.endpoint_path
+            new_method = current_ap.method
 
-        # --- Proceed with update ---
-        current_ap = self.dao.get_access_point_by_uuid(access_uuid)
+        # --- Other fields (module, is_public) ---
+        new_module = update_dict.get('module', current_ap.module)
+        new_is_public = update_dict.get('is_public', current_ap.is_public)
+
+        # --- Perform AccessPoint update ---
         updated_ap = self.dao.update_access_point(current_ap.access_id, **update_dict)
 
-        
+        # --- Prepare updated permission code for response ---
+        permission_code = self.dao.get_permission_code_by_access_id(current_ap.access_id)
 
+        # --- Build and return response ---
         return AccessPointOut(
             access_uuid=access_uuid,
             endpoint_path=new_endpoint,
             method=new_method,
             module=new_module,
-            is_public=new_is_public
+            is_public=new_is_public,
+            permission_code=permission_code
         )
+
+
 
 
     def delete(self, access_uuid: str):
