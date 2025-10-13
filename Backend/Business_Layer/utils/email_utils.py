@@ -31,7 +31,34 @@ def send_otp_email(to_email: str, otp: str):
     content = f"Your OTP code is: {otp}. It is valid for 5 minutes."
     send_email(to_email, subject, content)
 def send_welcome_email(to_email: str, name: str, temp_password: str):
-    subject = "Welcome to User Management System"
-    content = f"Hello {name},\n\nWelcome to the User Management System! Your account has been created successfully.\n\nYour temporary password is: {temp_password}\nPlease change your password after logging in for the first time.\n\nBest regards,\nUser Management Team.\n Reset your password here: {FRONTEND_URL}/reset-password"
+    subject = "Welcome to Paves Technologies"
+
+    content = f"""
+Hello {name},
+
+Welcome to **Paves Technologies**!
+
+Your intranet account has been successfully created.  
+Please find your login details below:
+
+----------------------------------------
+**Temporary Password:** {temp_password}
+----------------------------------------
+
+🔐 **Important:**  
+For security reasons, you must change your password after logging in for the first time.  
+You will not be able to continue using the intranet until your password has been updated.
+
+You can log in and reset your password here:  
+{FRONTEND_URL}
+
+If you did not expect this email or believe it was sent in error, please contact the system administrator immediately.
+
+Best regards,  
+**User Management Team**  
+_Paves Technologies_
+"""
+
     send_email(to_email, subject, content)
+
  
