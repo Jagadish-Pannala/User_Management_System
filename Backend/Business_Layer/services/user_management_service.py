@@ -9,10 +9,10 @@ from ..utils.input_validators import validate_email_format, validate_password_st
 from ..utils.generate_uuid7 import generate_uuid7
 # Import the audit decorator
 from ..utils.audit_decorator import audit_action_with_request
-
-
 from ...Api_Layer.interfaces.user_management import UserBaseIn
 import pandas as pd
+import re
+import math
  
  
 class UserService:
@@ -110,31 +110,67 @@ class UserService:
 
     
     def bulk_create_users(self, df: pd.DataFrame, created_by_user_id: int):
+        def clean_contact(contact):
+            """
+            Safely clean and normalize contact numbers from Excel.
+            Handles:
+            - Scientific notation (9.18097E+11)
+            - Float rounding
+            - String or numeric formats
+            - Non-digit characters
+            """
+            if pd.isna(contact):
+                return ""
+
+            # Case 1: float values (scientific notation or plain float)
+            if isinstance(contact, (float, int)):
+                # Check if float is too large and rounded by Excel
+                if contact > 1e11:  # likely 12-digit Indian number
+                    # Convert with integer precision (no decimals)
+                    contact_str = f"{int(contact):.0f}"
+                else:
+                    contact_str = str(int(contact))
+            else:
+                # Case 2: string input
+                contact_str = str(contact).strip()
+
+            # Remove anything that’s not a digit
+            contact_str = re.sub(r"\D", "", contact_str)
+
+            # If number looks truncated (e.g., 918097000000), warn
+            if len(contact_str) < 10 or len(contact_str) > 15:
+                raise ValueError(f"Invalid or truncated contact number: {contact}")
+
+            return contact_str
+
         def generate_password(first_name, contact):
-            contact_str = str(contact)  # ensure it’s a string
-            return f"{first_name[:4]}@{contact_str[-4:]}"
+            contact_str = str(contact)
+            return f"{first_name[:4]}@{contact_str[-4:]}" if len(contact_str) >= 4 else f"{first_name[:4]}@0000"
 
         created_users = []
         failed_rows = []
 
-        # Optional: fetch "General" role once, not for each user
+        # Fetch "General" role once
         general_role = self.dao.get_role_by_name("General")
         if not general_role:
             raise ValueError("Role 'General' not found")
 
         for index, row in df.iterrows():
             try:
-                # Build schema manually
+                # Clean and validate contact
+                contact_cleaned = clean_contact(row["contact"])
+
+                # Build schema
                 user_schema = UserBaseIn(
                     first_name=row["first_name"],
                     last_name=row["last_name"],
                     mail=row["mail"],
-                    contact=str(row["contact"]),
-                    password=generate_password(row["first_name"], row["contact"]),  # default if not given
+                    contact=contact_cleaned,
+                    password=generate_password(row["first_name"], contact_cleaned),
                     is_active=True
                 )
 
-                # Reuse same validation logic
+                # Validation
                 existing = self.dao.get_user_by_email(user_schema.mail)
                 if existing:
                     raise ValueError(f"User with email {user_schema.mail} already exists")
@@ -180,6 +216,7 @@ class UserService:
             "failed_count": len(failed_rows),
             "failed_rows": failed_rows
         }
+
     
 
  
