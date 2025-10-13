@@ -178,6 +178,24 @@ class PermissionGroupService:
         # Add permissions to group
         new_mappings = self.dao.add_permissions_to_group(group_id, permission_ids, assigned_by)
 
+        # Remove any permissions that are already in the default group
+        default_group = self.dao.get_group_by_name("newly_created_permissions_group")
+        default_group_uuid = default_group.group_uuid
+        default_group_permissions = self.list_permissions_in_group(default_group_uuid)
+        default_group_permissions_uuids = [permission['permission_uuid'] for permission in default_group_permissions]
+        current_permissions_uuids = [permission["permission_uuid"] for permission in permissions_dict.values()]
+
+        print("Default Group Permissions UUIDs:", default_group_permissions_uuids)
+        print("Current Permissions UUIDs to Add:", current_permissions_uuids)
+
+        redundant_permissions = []
+        for puid in current_permissions_uuids:
+            if puid in default_group_permissions_uuids:
+                redundant_permissions.append(puid)
+
+        self.remove_permissions_from_group(default_group_uuid, redundant_permissions)
+                
+
         # Set audit data
         audit_data['entity_id'] = group_id  # The group being modified
         audit_data['new_data'] = {
@@ -187,7 +205,7 @@ class PermissionGroupService:
             "permission_count": len(new_mappings),
             "assigned_by": assigned_by
         }
-        
+
         # Return full permission objects for response
         return self.dao.get_permissions_by_ids([m.permission_id for m in new_mappings])
 
