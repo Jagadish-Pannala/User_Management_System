@@ -78,6 +78,7 @@ def create_user(
         raise HTTPException(status_code=400, detail=str(e))
 @router.post("/multiple-users", response_model=dict)
 async def bulk_create_users(
+    request: Request,
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
@@ -93,7 +94,7 @@ async def bulk_create_users(
                 detail=f"Missing required columns. Expected: {', '.join(required_cols)}"
             )
 
-        result = user_service.bulk_create_users(df, created_by_user_id=current_user["user_id"])
+        result = user_service.create_bulk_user(df, created_by_user_id=current_user["user_id"], request=request)
         return result
 
     except Exception as e:
