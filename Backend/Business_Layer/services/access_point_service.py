@@ -39,13 +39,24 @@ class AccessPointService:
 
         return "^" + pattern + "$"
     def _invalidate_cache(self, access_uuid: str = None):
+        """
+        Invalidate or refresh Redis cache when DB is updated.
+        """
+        try:
+            redis_client = redis_client()
+            if not redis_client:
+                print("⚠️ Redis client not initialized. Skipping cache invalidation.")
+                return
 
-        """
-        Invalidate or refresh cache when DB is updated.
-        """
-        redis_client.delete("access_points_cache")
-        if access_uuid:
-            redis_client.delete(f"access_point:{access_uuid}")
+            redis_client.delete("access_points_cache")
+            print("🗑️ Deleted key: access_points_cache")
+
+            if access_uuid:
+                redis_client.delete(f"access_point:{access_uuid}")
+                print(f"🗑️ Deleted key: access_point:{access_uuid}")
+
+        except Exception as e:
+            print(f"❌ Failed to invalidate cache: {e}")
 
     def list(self):
         """
