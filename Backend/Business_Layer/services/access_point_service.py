@@ -31,7 +31,7 @@ class AccessPointService:
         Static endpoints are returned unchanged.
         """
         if "{" not in endpoint:  # static path
-            return endpoint
+            return None
 
         # Replace {param} with a named regex group (allowing digits/letters/_/-)
         pattern = re.sub(r"\{(\w*)\}", r"([^/]+)", endpoint)

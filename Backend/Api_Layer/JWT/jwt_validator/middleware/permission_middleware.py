@@ -12,10 +12,7 @@ logger = logging.getLogger(__name__)
 
 class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, cache_size: int = 1000):
-        super().__init__(app)
-        self._permission_cache: Dict[str, Set[str]] = {}
-        self.cache_size = cache_size
-    
+        super().__init__(app)    
     async def dispatch(self, request: Request, call_next):
         print("Entering Permission Middleware")
         
@@ -70,40 +67,37 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
             
             print(f"Checking access for: {cache_key}")
             
-            # Check cache first
-            required_permissions = self._get_cached_permissions(cache_key)
-            access_point = None
             
-            if required_permissions is None:
-                print(f"Cache miss - querying database")
                 
-                # Not in cache, query database
-                access_point = access_point_dao.get_access_point_by_path_and_method(
-                    endpoint_path=endpoint_path, 
-                    method=method
+            #query database
+            access_point = access_point_dao.get_access_point_by_path_and_method(
+                endpoint_path=endpoint_path, 
+                method=method
+            )
+            if not access_point:
+                print(f"ACCESS DENIED: Access point not registered in DB")
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "ACESS DENIED : Access Point is not registered in the system db"}
                 )
+
+
+
                 
-                if not access_point:
-                    print(f"ACCESS DENIED: Access point not registered in database")
-                    return JSONResponse(
-                        status_code=403, 
-                        content={"detail": "Access point not registered"}
-                    )
-                
-                print(f"Access point found: ID={access_point.access_id}, Public={access_point.is_public}")
-                
-                # Get required permissions and cache them
-                required_permissions = access_point_dao.get_permissions_for_access_point(
-                    access_point.access_id
+            # Get required permissions and cache them
+            required_permissions = access_point_dao.get_permissions_for_access_point(
+                access_point.access_id
+            )
+            print(f"Required permissions for this endpoint: {required_permissions}")
+            if (required_permissions is None or required_permissions == []) and access_point.is_public is False and 'Super Admin' not in user.get('roles', []):
+                print(f"ACCESS DENIED: No permissions mapped for this access point")
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "ACESS DENIED : No permissions is mapped for this access point"}
                 )
-                
-                print(f"Required permissions from DB: {required_permissions}")
-                self._cache_permissions(cache_key, required_permissions, access_point.is_public)
-            else:
-                print(f"Cache hit - using cached permissions: {required_permissions}")
             
-            # Check if endpoint is public (from cache or database)
-            if self._is_endpoint_public(cache_key, access_point):
+            # Check if endpoint is public (from database)
+            if access_point.is_public:
                 print(f"ACCESS GRANTED: Endpoint is public")
                 return await call_next(request)
             
@@ -155,41 +149,9 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
                 content={"detail": f"Internal server error during permission check: {str(e)}"}
             )
     
-    def _get_cached_permissions(self, cache_key: str):
-        """Get permissions from cache."""
-        cache_entry = self._permission_cache.get(cache_key)
-        if cache_entry:
-            return cache_entry.get('permissions')
-        return None
-    
-    def _cache_permissions(self, cache_key: str, permissions: list, is_public: bool):
-        """Cache permissions for an endpoint."""
-        # Simple cache size management
-        if len(self._permission_cache) >= self.cache_size:
-            # Remove oldest entry (simple FIFO)
-            oldest_key = next(iter(self._permission_cache))
-            del self._permission_cache[oldest_key]
-        
-        self._permission_cache[cache_key] = {
-            'permissions': permissions,
-            'is_public': is_public
-        }
-    
-    def _is_endpoint_public(self, cache_key: str, access_point=None):
-        """Check if endpoint is public from cache or access_point object."""
-        cache_entry = self._permission_cache.get(cache_key)
-        if cache_entry:
-            is_public = cache_entry.get('is_public', False)
-            return is_public in (True, 1)
-        
-        if access_point:
-            return access_point.is_public in (True, 1)
-        
-        return False
-    
-    def clear_cache(self):
-        """Clear the permission cache. Useful for testing or when permissions change."""
-        self._permission_cache.clear()
-        logger.info("Permission cache cleared")
+
+
+
+
 
 

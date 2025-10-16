@@ -37,22 +37,26 @@ class AccessPointDAO:
     # def get_access_point_by_path_and_method(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
     #     return self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
     def get_access_point_by_path_and_method(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
-        # First, try exact match
+        # Force SQLAlchemy to reload from DB instead of cache
+        self.db.expire_all()
+
+        # Exact match
         ap = self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
         if ap:
+            print(f"Exact match found for {method} {endpoint_path}")
             return ap
-        
-        # Then try regex match for dynamic endpoints
+
+        # Regex match for dynamic endpoints
         aps_with_regex = self.db.query(AccessPoint).filter(
             AccessPoint.regex_pattern.isnot(None),
             AccessPoint.method == method.upper()
         ).all()
-        
         for ap in aps_with_regex:
             if re.match(ap.regex_pattern, endpoint_path):
                 return ap
-        
+
         return None
+
     
     def get_access_point_by_id(self, access_id: int) -> Optional[AccessPoint]:
         return self.db.query(AccessPoint).options(
@@ -89,6 +93,7 @@ class AccessPointDAO:
                 setattr(ap, field, data[field])
         self.db.commit()
         self.db.refresh(ap)
+        self.db.expire_all()
 
         return ap
     
@@ -126,6 +131,7 @@ class AccessPointDAO:
 
         self.db.commit()
         self.db.refresh(app)
+        self.db.expire_all()
         return app
 
     def get_permission_code_by_access_id(self, access_id: int) -> Optional[str]:
