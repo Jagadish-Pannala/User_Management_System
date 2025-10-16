@@ -9,7 +9,8 @@ import re
 from ..utils.generate_uuid7 import generate_uuid7
 from ...Data_Access_Layer.dao.permission_dao import PermissionDAO
 from ..utils.audit_decorator import audit_action_with_request
-
+from ...Business_Layer.utils.redis_client import redis_client
+import json
 
 class AccessPointService:
     def __init__(self, db: Session = None):
@@ -37,6 +38,28 @@ class AccessPointService:
         pattern = re.sub(r"\{(\w*)\}", r"([^/]+)", endpoint)
 
         return "^" + pattern + "$"
+    def _invalidate_cache(self, access_uuid: str = None):
+
+        """
+        Invalidate or refresh cache when DB is updated.
+        """
+        redis_client.delete("access_points_cache")
+        if access_uuid:
+            redis_client.delete(f"access_point:{access_uuid}")
+
+    def list(self):
+        """
+        Return all access points — cached.
+        """
+        cache_key = "access_points_cache"
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+
+        aps = self.dao.get_all_access_points()
+        data = [ap.to_dict() for ap in aps]  # Convert SQLAlchemy objects
+        redis_client.setex(cache_key, 300, json.dumps(data))  # Cache for 5 min
+        return data
 
     @audit_action_with_request(
     action_type='CREATE',
@@ -88,7 +111,7 @@ class AccessPointService:
             "created_by": access_point.created_by,
             "created_at": str(access_point.created_at)
         }
-        
+        self._invalidate_cache(access_point.access_uuid)
         return {
             "access_uuid": access_point.access_uuid,
             "message": "Access point created successfully"
@@ -274,6 +297,7 @@ class AccessPointService:
             }
         
         audit_data['new_data'] = changes if changes else None
+        self._invalidate_cache(access_uuid)
         
         # --- Build and return response ---
         return AccessPointOut(
@@ -323,6 +347,7 @@ class AccessPointService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to delete access point"
             )
+        self._invalidate_cache(access_uuid)
 
         return {"message": f"Access point  deleted successfully"}
 
@@ -358,6 +383,7 @@ class AccessPointService:
             "permission_code": permission.permission_code,
             "assigned_by": assigned_by
         } }
+        self._invalidate_cache(access_uuid)
         return {
             "message": "Permission mapped successfully",
             "access_uuid": access_point.access_uuid,
@@ -368,6 +394,8 @@ class AccessPointService:
         success = self.dao.delete_mapping_by_access_id(access_id)
         if not success:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No mapping found to delete")
+        access_uuid = self.dao.get_access_point_by_id(access_id).access_uuid
+        self._invalidate_cache(access_uuid)
         return {"message": "Permission unmapped successfully"}
     
     @audit_action_with_request(
@@ -405,6 +433,7 @@ class AccessPointService:
             "permission_uuid": permission.permission_uuid,
             "permission_code": permission.permission_code
         } }
+        self._invalidate_cache(access_uuid)
         return {"message": "Permission unmapped from access point successfully"}
     
     def get_unmapped_access_points(self):
