@@ -56,6 +56,13 @@ class AccessPointDAO:
                 return ap
 
         return None
+    def get_access_point_by_path_and_method_without_regex_check(self, endpoint_path: str, method: str) -> Optional[AccessPoint]:
+        self.db.expire_all()
+        ap = self.db.query(AccessPoint).filter_by(endpoint_path=endpoint_path, method=method.upper()).first()
+        if ap:
+            print(f"Exact match found for {method} {endpoint_path}")
+            return ap
+        return None
 
     
     def get_access_point_by_id(self, access_id: int) -> Optional[AccessPoint]:

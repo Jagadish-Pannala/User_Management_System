@@ -9,9 +9,9 @@ import re
 from ..utils.generate_uuid7 import generate_uuid7
 from ...Data_Access_Layer.dao.permission_dao import PermissionDAO
 from ..utils.audit_decorator import audit_action_with_request
-from ...Business_Layer.utils.redis_client import redis_client
+from ...Business_Layer.utils.redis_cache import delete_access_point_cache_by_path, clear_all_access_point_cache, set_access_point_cache, get_access_point_from_cache
 import json
-
+import asyncio
 class AccessPointService:
     def __init__(self, db: Session = None):
         self.db: Session = db or SessionLocal()
@@ -38,39 +38,38 @@ class AccessPointService:
         pattern = re.sub(r"\{(\w*)\}", r"([^/]+)", endpoint)
 
         return "^" + pattern + "$"
-    def _invalidate_cache(self, access_uuid: str = None):
+    def _invalidate_cache(self, method: str, path: str):
         """
-        Invalidate or refresh Redis cache when DB is updated.
+        Clear cache for an access point using its UUID.
+        
+        Args:
+            access_uuid: The UUID of the access point
+        
+        Example:
+            self._invalidate_cache("123e4567-e89b-12d3-a456-426614174000")
         """
-        try:
-            redis_client = redis_client()
-            if not redis_client:
-                print("⚠️ Redis client not initialized. Skipping cache invalidation.")
-                return
+        
+        if path:
+            print(f"Invalidating cache for {path}")
+            delete_access_point_cache_by_path(path)
+        else:
+            # If method or path is missing, clear all cache
+            clear_all_access_point_cache()
+        
 
-            redis_client.delete("access_points_cache")
-            print("🗑️ Deleted key: access_points_cache")
+    # def list(self):
+    #     """
+    #     Return all access points — cached.
+    #     """
+    #     cache_key = "access_points_cache"
+    #     cached_data = redis_client.get(cache_key)
+    #     if cached_data:
+    #         return json.loads(cached_data)
 
-            if access_uuid:
-                redis_client.delete(f"access_point:{access_uuid}")
-                print(f"🗑️ Deleted key: access_point:{access_uuid}")
-
-        except Exception as e:
-            print(f"❌ Failed to invalidate cache: {e}")
-
-    def list(self):
-        """
-        Return all access points — cached.
-        """
-        cache_key = "access_points_cache"
-        cached_data = redis_client.get(cache_key)
-        if cached_data:
-            return json.loads(cached_data)
-
-        aps = self.dao.get_all_access_points()
-        data = [ap.to_dict() for ap in aps]  # Convert SQLAlchemy objects
-        redis_client.setex(cache_key, 300, json.dumps(data))  # Cache for 5 min
-        return data
+    #     aps = self.dao.get_all_access_points()
+    #     data = [ap.to_dict() for ap in aps]  # Convert SQLAlchemy objects
+    #     redis_client.setex(cache_key, 300, json.dumps(data))  # Cache for 5 min
+    #     return data
 
     @audit_action_with_request(
     action_type='CREATE',
@@ -122,7 +121,13 @@ class AccessPointService:
             "created_by": access_point.created_by,
             "created_at": str(access_point.created_at)
         }
-        self._invalidate_cache(access_point.access_uuid)
+        set_access_point_cache(access_point.method, access_point.endpoint_path, {
+            "access_point": {
+                "is_public": access_point.is_public,
+                "access_id": access_point.access_id
+            },
+            "required_permissions": []
+        })
         return {
             "access_uuid": access_point.access_uuid,
             "message": "Access point created successfully"
@@ -251,7 +256,7 @@ class AccessPointService:
             update_dict['regex_pattern'] = regex_pattern
             
             # Check for duplicate (endpoint_path + method)
-            existing = self.dao.get_access_point_by_path_and_method(new_endpoint, new_method)
+            existing = self.dao.get_access_point_by_path_and_method_without_regex_check(new_endpoint, new_method)
             if existing and existing.access_uuid != access_uuid:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -308,7 +313,7 @@ class AccessPointService:
             }
         
         audit_data['new_data'] = changes if changes else None
-        self._invalidate_cache(access_uuid)
+        self._invalidate_cache(old_snapshot['method'], old_snapshot['endpoint_path'])
         
         # --- Build and return response ---
         return AccessPointOut(
@@ -358,7 +363,7 @@ class AccessPointService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to delete access point"
             )
-        self._invalidate_cache(access_uuid)
+        self._invalidate_cache(access_point.method, access_point.endpoint_path)
 
         return {"message": f"Access point  deleted successfully"}
 
@@ -394,7 +399,7 @@ class AccessPointService:
             "permission_code": permission.permission_code,
             "assigned_by": assigned_by
         } }
-        self._invalidate_cache(access_uuid)
+        self._invalidate_cache(access_point.method, access_point.endpoint_path)
         return {
             "message": "Permission mapped successfully",
             "access_uuid": access_point.access_uuid,
@@ -406,7 +411,8 @@ class AccessPointService:
         if not success:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No mapping found to delete")
         access_uuid = self.dao.get_access_point_by_id(access_id).access_uuid
-        self._invalidate_cache(access_uuid)
+        access_point = self.dao.get_access_point_by_path_and_method(access_uuid)
+        self._invalidate_cache(access_point.method, access_point.endpoint_path)
         return {"message": "Permission unmapped successfully"}
     
     @audit_action_with_request(
@@ -444,7 +450,7 @@ class AccessPointService:
             "permission_uuid": permission.permission_uuid,
             "permission_code": permission.permission_code
         } }
-        self._invalidate_cache(access_uuid)
+        self._invalidate_cache(access_point.method, access_point.endpoint_path)
         return {"message": "Permission unmapped from access point successfully"}
     
     def get_unmapped_access_points(self):

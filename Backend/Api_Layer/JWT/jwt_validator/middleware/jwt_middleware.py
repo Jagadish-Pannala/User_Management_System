@@ -6,6 +6,7 @@ from ..auth.jwt_validator import validate_jwt_token
 from Backend.Business_Layer.utils.redis_cache import get_access_point_from_cache
 import inspect
 import traceback
+
 class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         print("JWT Middleware - ENTERING")
@@ -32,14 +33,11 @@ class JWTMiddleware(BaseHTTPMiddleware):
             request.state.user = decoded_token
             print(f"JWT Middleware - User set: {decoded_token.get('name')}")
 
-            # Optional: fetch access point cache
-            try:
-                access_point_cache = await get_access_point_from_cache(request.method, request.url.path)
-                if access_point_cache:
-                    request.state.access_point_cache = access_point_cache
-                    print("JWT Middleware - Access point cache found")
-            except Exception as redis_error:
-                print(f"JWT Middleware - Redis cache failed: {redis_error}")
+            # Optional: fetch access point cache (SYNCHRONOUS - no await!)
+            access_point_cache = get_access_point_from_cache(request.method, request.url.path)
+            if access_point_cache:
+                request.state.access_point_cache = access_point_cache
+                print("JWT Middleware - Access point cache found")
 
             response = await call_next(request)
             print("JWT Middleware - EXITING")
@@ -48,4 +46,4 @@ class JWTMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             print("JWT Middleware Error:", e)
             traceback.print_exc()
-            return JSONResponse(status_code=401, content={"detai": str(e)})
+            return JSONResponse(status_code=401, content={"detail": str(e)})  # Fixed typo: "detai" -> "detail"

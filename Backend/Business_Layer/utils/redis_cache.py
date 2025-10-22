@@ -1,4 +1,4 @@
-# redis_cache.py
+# Backend/Business_Layer/utils/redis_cache.py
 from .redis_client import get_redis_client
 import json
 
@@ -7,39 +7,71 @@ ACCESS_POINT_CACHE_PREFIX = "access_point_cache"
 def make_cache_key(method: str, path: str) -> str:
     return f"{ACCESS_POINT_CACHE_PREFIX}:{method}:{path}"
 
-async def get_access_point_from_cache(method: str, path: str):
+def get_access_point_from_cache(method: str, path: str):
+    """Synchronous - returns None if Redis unavailable"""
     try:
-        r = await get_redis_client()
+        r = get_redis_client()
         if not r:
             return None
-        key = f"access_point_cache:{method}:{path}"
-        data = await r.get(key)
+        key = make_cache_key(method, path)
+        data = r.get(key)
         if data:
-            import json
             return json.loads(data)
         return None
-    except Exception as e:
-        print(f"Redis get failed: {e}")
+    except Exception:
         return None
 
+def set_access_point_cache(method: str, path: str, value: dict):
+    """Synchronous - silent fail if Redis unavailable"""
+    try:
+        r = get_redis_client()
+        if r is None:
+            return
+        key = make_cache_key(method, path)
+        r.set(key, json.dumps(value))
+    except Exception:
+        pass
 
-async def set_access_point_cache(method: str, path: str, value: dict):
-    r = await get_redis_client()
-    if r is None:
-        return
-    key = make_cache_key(method, path)
-    await r.set(key, json.dumps(value))
+def delete_access_point_cache(method: str, path: str):
+    """Synchronous - silent fail if Redis unavailable"""
+    try:
+        r = get_redis_client()
+        if r is None:
+            return
+        key = make_cache_key(method, path)
+        r.delete(key)
+    except Exception:
+        pass
 
-async def delete_access_point_cache(method: str, path: str):
-    r = await get_redis_client()
-    if r is None:
-        return  # <-- prevent NoneType error
-    key = make_cache_key(method, path)
-    await r.delete(key)
+def delete_access_point_cache_by_path(path: str):
+    """
+    Delete cache for a specific path across ALL methods.
+    Use this when you update/delete an access point.
+    """
+    try:
+        r = get_redis_client()
+        if r is None:
+            return
+        
+        # Find all keys for this path with any method
+        pattern = f"{ACCESS_POINT_CACHE_PREFIX}:*:{path}"
+        keys = r.keys(pattern)
+        
+        if keys:
+            r.delete(*keys)
+            print(f"🗑️ Deleted {len(keys)} cache entries for path: {path}")
+    except Exception as e:
+        print(f"Cache deletion failed: {e}")
 
-async def clear_all_access_point_cache():
-    r = await get_redis_client()
-    if r is None:
-        return
-    async for key in r.scan_iter(f"{ACCESS_POINT_CACHE_PREFIX}:*"):
-        await r.delete(key)
+def clear_all_access_point_cache():
+    """Synchronous - silent fail if Redis unavailable"""
+    try:
+        r = get_redis_client()
+        if r is None:
+            return
+        keys = r.keys(f"{ACCESS_POINT_CACHE_PREFIX}:*")
+        if keys:
+            r.delete(*keys)
+            print(f"🗑️ Cleared {len(keys)} cache entries")
+    except Exception:
+        pass

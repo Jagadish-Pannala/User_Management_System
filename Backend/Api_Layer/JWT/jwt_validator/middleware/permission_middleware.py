@@ -24,12 +24,8 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
         cache_key = f"{method}:{path}"
         print(f"Permission Middleware - Checking access for {cache_key}")
 
-        # Step 1: Try cache
-        try:
-            cached_data = await get_access_point_from_cache(method, path)
-        except Exception as e:
-            print(f"Permission Middleware - Redis fetch failed: {e}")
-            cached_data = None
+        # Step 1: Try cache (SYNCHRONOUS - no await!)
+        cached_data = get_access_point_from_cache(method, path)
 
         if cached_data:
             print(f"✅ Cache hit for {cache_key}")
@@ -49,17 +45,15 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
                 print(f"ACCESS DENIED: No permissions mapped for this access point")
                 return JSONResponse(
                     status_code=403,
-                    content={"detail": "ACESS DENIED : No permissions is mapped for this access point"}
+                    content={"detail": "ACCESS DENIED: No permissions is mapped for this access point"}
                 )
             access_point_info = {"is_public": access_point.is_public, "access_id": access_point.access_id}
 
-            try:
-                await set_access_point_cache(method, path, {
-                    "access_point": access_point_info,
-                    "required_permissions": required_permissions
-                })
-            except Exception as e:
-                print(f"Permission Middleware - Redis cache set failed: {e}")
+            # Cache the result (SYNCHRONOUS - no await!)
+            set_access_point_cache(method, path, {
+                "access_point": access_point_info,
+                "required_permissions": required_permissions
+            })
 
         # Step 2: Permission check
         if access_point_info.get("is_public"):
