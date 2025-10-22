@@ -17,6 +17,20 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
 def admin_home(current_user: dict = Depends(get_current_user)):
     return {"message": "User Management Route"}
 
+@router.get("/count")
+def count_users(
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return {"user_count": user_service.count_users()}
+
+@router.get("/active-count")
+def count_active_users(
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return {"active_user_count": user_service.count_active_users()}
+
 @router.get("", response_model=list[UserOut])
 def list_users(
     current_user: dict = Depends(get_current_user),

@@ -22,6 +22,12 @@ class UserService:
         self.db = db
         self.dao = UserDAO(self.db)
 
+    def count_users(self):
+        return self.dao.count_users()
+    
+    def count_active_users(self):
+        return self.dao.count_active_users()
+
     def list_users(self):
         return self.dao.get_all_users()
 

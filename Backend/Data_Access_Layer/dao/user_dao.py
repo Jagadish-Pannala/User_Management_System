@@ -31,6 +31,12 @@ class UserDAO:
 
     def get_user_by_uuid(self, user_uuid: str) -> Optional[models.User]:
         return self.db.query(models.User).filter_by(user_uuid=user_uuid).first()
+    
+    def count_users(self) -> int:
+        return self.db.query(models.User).count()
+    
+    def count_active_users(self) -> int:
+        return self.db.query(models.User).filter(models.User.is_active == True).count()
 
     def get_all_users(self) -> List[models.User]:
         return self.db.query(models.User).all()
