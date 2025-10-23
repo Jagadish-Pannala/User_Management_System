@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Data_Access_Layer.models import models
 from ...Data_Access_Layer.utils.database import SessionLocal
@@ -8,17 +8,25 @@ from ..utils.email_utils import send_welcome_email
 from ..utils.input_validators import validate_email_format, validate_password_strength, validate_name, validate_contact_number
 from ..utils.generate_uuid7 import generate_uuid7
 # Import the audit decorator
-from ..utils.audit_decorator import audit_action_with_request
+from ..utils.audit_decorator import audit_action_with_request, _get_ip_address
 from ...Api_Layer.interfaces.user_management import UserBaseIn
 import pandas as pd
 import re
-import math
+import asyncio
+from datetime import datetime
+
  
  
 class UserService:
     def __init__(self, db: Session):
         self.db = db
         self.dao = UserDAO(self.db)
+
+    def count_users(self):
+        return self.dao.count_users()
+    
+    def count_active_users(self):
+        return self.dao.count_active_users()
 
     def list_users(self):
         return self.dao.get_all_users()
@@ -147,75 +155,181 @@ class UserService:
             contact_str = str(contact)
             return f"{first_name[:4]}@{contact_str[-4:]}" if len(contact_str) >= 4 else f"{first_name[:4]}@0000"
 
-        created_users = []
+    def create_bulk_user(
+        self, 
+        df: pd.DataFrame, 
+        created_by_user_id: int,
+        current_user: dict = None,
+        request: Request = None,
+        audit_data: dict = None
+    ):
+        """
+        Bulk create users from Excel with validation, audit logs, and partial success handling.
+        Skips invalid rows and continues with valid ones.
+        Returns dict with 'success' and 'failed' results.
+        """
+
+        def clean_contact(contact):
+            if pd.isna(contact):
+                return ""
+
+            if isinstance(contact, (float, int)):
+                if contact > 1e11:
+                    contact_str = f"{int(contact):.0f}"
+                else:
+                    contact_str = str(int(contact))
+            else:
+                contact_str = str(contact).strip()
+
+            contact_str = re.sub(r"\D", "", contact_str)
+
+            if len(contact_str) < 10 or len(contact_str) > 15:
+                raise ValueError(f"Invalid or truncated contact number: {contact}")
+
+            return contact_str
+
+        def generate_password(first_name, contact):
+            contact_str = str(contact)
+            return f"{first_name[:4]}@{contact_str[-4:]}" if len(contact_str) >= 4 else f"{first_name[:4]}@0000"
+
+        if audit_data is None:
+            audit_data = {}
+
+        cleaned_rows = []
         failed_rows = []
 
-        # Fetch "General" role once
+        # ✅ Step 1: Validate each row and collect valid ones
+        for index, row in df.iterrows():
+            try:
+                contact = clean_contact(row["contact"])
+                password = generate_password(row["first_name"], contact)
+
+                validate_email_format(row["mail"])
+                validate_name(row["first_name"])
+                validate_name(row["last_name"])
+                validate_contact_number(contact)
+                validate_password_strength(password)
+
+                cleaned_rows.append({
+                    "first_name": row["first_name"],
+                    "last_name": row["last_name"],
+                    "mail": row["mail"],
+                    "contact": contact,
+                    "password": password,
+                    "row_num": index + 2,
+                    "is_active": row.get("is_active", True)
+                })
+            except Exception as e:
+                failed_rows.append({
+                    "row": index + 2,
+                    "mail": row.get("mail", ""),
+                    "error": str(e)
+                })
+
+        # ✅ Step 2: If all failed, stop early
+        if not cleaned_rows:
+            return {
+                "success": [],
+                "failed": failed_rows,
+                "message": "All rows failed validation."
+            }
+
+        # ✅ Step 3: Filter out already existing users (skip them too)
+        existing_emails = self.dao.get_users_by_emails([r["mail"] for r in cleaned_rows])
+        if existing_emails:
+            for r in cleaned_rows[:]:
+                if r["mail"] in existing_emails:
+                    failed_rows.append({
+                        "row": r["row_num"],
+                        "mail": r["mail"],
+                        "error": "User already exists"
+                    })
+                    cleaned_rows.remove(r)
+
+        if not cleaned_rows:
+            return {
+                "success": [],
+                "failed": failed_rows,
+                "message": "No valid new users to create."
+            }
+
+        # ✅ Step 4: Continue creating users
         general_role = self.dao.get_role_by_name("General")
         if not general_role:
             raise ValueError("Role 'General' not found")
 
-        for index, row in df.iterrows():
-            try:
-                # Clean and validate contact
-                contact_cleaned = clean_contact(row["contact"])
+        for r in cleaned_rows:
+            r["hashed_password"] = hash_password(r["password"])
 
-                # Build schema
-                user_schema = UserBaseIn(
-                    first_name=row["first_name"],
-                    last_name=row["last_name"],
-                    mail=row["mail"],
-                    contact=contact_cleaned,
-                    password=generate_password(row["first_name"], contact_cleaned),
-                    is_active=True
+        user_objects = [
+            models.User(
+                user_uuid=generate_uuid7(),
+                first_name=r["first_name"],
+                last_name=r["last_name"],
+                mail=r["mail"],
+                contact=r["contact"],
+                password=r["hashed_password"],
+                is_active=r["is_active"]
+            )
+            for r in cleaned_rows
+        ]
+
+        created_users = self.dao.create_users_batch(user_objects)
+
+        # ✅ Step 5: Map roles
+        user_role_mappings = [
+            (user.user_id, general_role.role_id, created_by_user_id)
+            for user in created_users
+        ]
+        self.dao.map_user_roles_batch(user_role_mappings)
+
+        # ✅ Step 6: Audit logs
+        ip_address = _get_ip_address(request=request) if request else None
+        audit_logs = []
+        for user in created_users:
+            new_data = {
+                "user_id": user.user_id,
+                "user_uuid": user.user_uuid,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "mail": user.mail,
+                "contact": user.contact,
+                "is_active": user.is_active,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+            description = f"Created new user: {user.mail}"
+            audit_logs.append(
+                models.AuditTrail(
+                    user_id=created_by_user_id,
+                    action_type="CREATE",
+                    entity_type="User",
+                    entity_id=user.user_id,
+                    old_data=None,
+                    new_data=new_data,
+                    ip_address=ip_address,
+                    description=description,
+                    created_at=datetime.utcnow()
                 )
+            )
+        if audit_logs:
+            self.dao.create_audit_logs_batch(audit_logs)
 
-                # Validation
-                existing = self.dao.get_user_by_email(user_schema.mail)
-                if existing:
-                    raise ValueError(f"User with email {user_schema.mail} already exists")
+        # ✅ Step 7: Send welcome emails asynchronously
+        for user, row in zip(created_users, cleaned_rows):
+            send_welcome_email(user.mail, user.first_name, row["password"])
 
-                validate_email_format(user_schema.mail)
-                validate_name(user_schema.first_name)
-                validate_name(user_schema.last_name)
-                validate_contact_number(user_schema.contact)
-                validate_password_strength(user_schema.password)
-
-                hashed_password = hash_password(user_schema.password)
-
-                new_user = models.User(
-                    user_uuid=generate_uuid7(),
-                    first_name=user_schema.first_name,
-                    last_name=user_schema.last_name,
-                    mail=user_schema.mail,
-                    contact=user_schema.contact,
-                    password=hashed_password,
-                    is_active=True
-                )
-
-                # Step 1: Create user
-                created_user = self.dao.create_user(new_user)
-
-                # Step 2: Map default role
-                self.dao.map_user_role(created_user.user_id, general_role.role_id, created_by_user_id)
-
-                # Step 3: Send welcome mail
-                send_welcome_email(user_schema.mail, user_schema.first_name, user_schema.password)
-
-                created_users.append(created_user)
-
-            except Exception as e:
-                failed_rows.append({
-                    "row_number": index + 2,  # Excel rows start at 2
-                    "mail": row.get("mail"),
-                    "error": str(e)
-                })
+        # ✅ Step 8: Final summary
+        success_data = [
+            {"row": r["row_num"], "mail": r["mail"], "status": "created"}
+            for r in cleaned_rows
+        ]
 
         return {
-            "created_count": len(created_users),
-            "failed_count": len(failed_rows),
-            "failed_rows": failed_rows
+            "success": success_data,
+            "failed": failed_rows,
+            "message": f"Created {len(success_data)} users, {len(failed_rows)} failed."
         }
+
 
     
 
