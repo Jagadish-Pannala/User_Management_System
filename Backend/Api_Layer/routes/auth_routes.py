@@ -1,9 +1,10 @@
-from fastapi import APIRouter,HTTPException, Request,Depends
+from fastapi import APIRouter,HTTPException, Request,Depends, status
 from fastapi.responses import RedirectResponse
 from ..interfaces.auth import RegisterUser, LoginUser, ForgotPassword,ChangePasswordFirstLogin
 from ...Business_Layer.services.auth_service import AuthService
 from ...config.env_loader import get_env_var
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
+from ...Business_Layer.utils.token_blacklist import blacklist_token
 
 
 router = APIRouter()
@@ -21,6 +22,20 @@ def register(user_data: RegisterUser):
 def login(credentials: LoginUser,request: Request = None):
     client_ip = auth_service.get_client_ip(request)
     return auth_service.login_user(credentials,client_ip)
+
+@router.post("/logout")
+def logout(request: Request, current_user: dict = Depends(get_current_user)):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+    token = auth_header.split(" ")[1]
+
+    if blacklist_token(token):
+        return {"message": f"User logged out successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Logout failed (Redis unavailable)")
+
+
 
 @router.get("/ms-login")
 def ms_login():
