@@ -9,6 +9,8 @@ from .config import (
     KID
 )
 
+from ....Business_Layer.utils.generate_uuid7 import generate_uuid7
+
 def token_create(token_data: dict) -> str:
     # Load the private key
     with open(PRIVATE_KEY_PATH, "rb") as key_file:
@@ -17,8 +19,10 @@ def token_create(token_data: dict) -> str:
     # Set expiration
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    jti = generate_uuid7()
     # Create payload
     payload = {
+        "jti": jti,
         "user_id": token_data["user_id"],
         "email": token_data["email"],
         "name": token_data["name"],

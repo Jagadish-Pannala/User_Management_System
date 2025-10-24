@@ -193,8 +193,9 @@ class PermissionGroupService:
             if puid in default_group_permissions_uuids:
                 redundant_permissions.append(puid)
 
-        self.remove_permissions_from_group(default_group_uuid, redundant_permissions)
-                
+        print("Redundant Permissions to Remove:", redundant_permissions)
+        if redundant_permissions:
+            self.remove_permissions_from_group(default_group_uuid, redundant_permissions)
 
         # Set audit data
         audit_data['entity_id'] = group_id  # The group being modified
