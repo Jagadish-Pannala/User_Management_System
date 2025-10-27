@@ -1,11 +1,10 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Enum, Text, DateTime, func, JSON
 from sqlalchemy.orm import relationship
-from ..utils.database import Base  # adjust import path
-
+from ..utils.database import Base
 
 # ----------------------- User Table -----------------------
 class User(Base):
-    __tablename__ = "User"
+    __tablename__ = "user"
 
     user_id = Column(Integer, primary_key=True, index=True)
     user_uuid = Column(String(36), unique=True, nullable=False)
@@ -21,18 +20,16 @@ class User(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # Direct relationship to User_Role entries
     assigned_roles = relationship(
-        "User_Role",
+        "User_Role",  # ✅ Fixed: Capital U and R
         back_populates="user",
         cascade="all, delete-orphan",
         foreign_keys="[User_Role.user_id]"
     )
     
-    # Many-to-many to Role - MUST specify foreign_keys due to assigned_by column
     roles = relationship(
-        "Role",
-        secondary="User_Role",
+        "Role",  # ✅ Fixed: Capital R
+        secondary="user_role",
         primaryjoin="User.user_id == User_Role.user_id",
         secondaryjoin="Role.role_id == User_Role.role_id",
         back_populates="users",
@@ -47,7 +44,7 @@ class User(Base):
 
 # ----------------------- Role Table -----------------------
 class Role(Base):
-    __tablename__ = "Role"
+    __tablename__ = "role"
 
     role_id = Column(Integer, primary_key=True, index=True)
     role_uuid = Column(String(36), unique=True, nullable=False)
@@ -55,16 +52,14 @@ class Role(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    # Direct relationship to User_Role entries
     user_roles = relationship(
-        "User_Role",
+        "User_Role",  # ✅ Fixed: Capital U and R
         back_populates="role"
     )
     
-    # Many-to-many to User - MUST specify joins due to assigned_by column
     users = relationship(
-        "User",
-        secondary="User_Role",
+        "User",  # ✅ Fixed: Capital U
+        secondary="user_role",
         primaryjoin="Role.role_id == User_Role.role_id",
         secondaryjoin="User.user_id == User_Role.user_id",
         back_populates="roles",
@@ -72,35 +67,34 @@ class Role(Base):
     )
     
     permission_groups = relationship(
-        "Permission_Group",
-        secondary="Role_Permission_Group",
+        "Permission_Group",  # ✅ Fixed: Capital P and G
+        secondary="role_permission_group",
         back_populates="roles"
     )
 
 
 # ----------------------- User_Role Mapping -----------------------
 class User_Role(Base):
-    __tablename__ = "User_Role"
+    __tablename__ = "user_role"
 
-    user_id = Column(Integer, ForeignKey("User.user_id", ondelete="RESTRICT"), primary_key=True)
-    role_id = Column(Integer, ForeignKey("Role.role_id", ondelete="RESTRICT"), primary_key=True)
-    assigned_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("user.user_id", ondelete="RESTRICT"), primary_key=True)
+    role_id = Column(Integer, ForeignKey("role.role_id", ondelete="RESTRICT"), primary_key=True)
+    assigned_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
     assigned_at = Column(DateTime, server_default=func.now())
 
-    # Explicitly specify foreign_keys to avoid ambiguity with assigned_by
     user = relationship(
-        "User", 
+        "User",  # ✅ Fixed: Capital U
         back_populates="assigned_roles", 
         foreign_keys=[user_id]
     )
     role = relationship(
-        "Role", 
+        "Role",  # ✅ Fixed: Capital R
         back_populates="user_roles"
     )
 
 # ----------------------- Permissions Table -----------------------
 class Permissions(Base):
-    __tablename__ = "Permissions"
+    __tablename__ = "permissions"
 
     permission_id = Column(Integer, primary_key=True, index=True)
     permission_uuid = Column(String(36), unique=True, nullable=False)
@@ -109,39 +103,39 @@ class Permissions(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    access_mappings = relationship("AccessPointPermission", back_populates="permission", cascade="all, delete-orphan")
-    permission_groups = relationship("Permission_Group", secondary="Permission_Group_Mapping", back_populates="permissions")
+    access_mappings = relationship("AccessPointPermission", back_populates="permission", cascade="all, delete-orphan")  # ✅ Fixed
+    permission_groups = relationship("Permission_Group", secondary="permission_group_mapping", back_populates="permissions")  # ✅ Fixed
 
 
 # ----------------------- Permission_Group Table -----------------------
 class Permission_Group(Base):
-    __tablename__ = "Permission_Group"
+    __tablename__ = "permission_group"
 
     group_id = Column(Integer, primary_key=True, index=True)
     group_uuid = Column(String(36), unique=True, nullable=False)
     group_name = Column(String(100), unique=True, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    created_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
 
-    created_by_user = relationship("User", back_populates="created_permission_groups")
-    permissions = relationship("Permissions", secondary="Permission_Group_Mapping", back_populates="permission_groups")
-    roles = relationship("Role", secondary="Role_Permission_Group", back_populates="permission_groups")
+    created_by_user = relationship("User", back_populates="created_permission_groups")  # ✅ Fixed
+    permissions = relationship("Permissions", secondary="permission_group_mapping", back_populates="permission_groups")  # ✅ Fixed
+    roles = relationship("Role", secondary="role_permission_group", back_populates="permission_groups")  # ✅ Fixed
 
 
 # ----------------------- Permission_Group_Mapping -----------------------
 class Permission_Group_Mapping(Base):
-    __tablename__ = "Permission_Group_Mapping"
+    __tablename__ = "permission_group_mapping"
 
-    permission_id = Column(Integer, ForeignKey("Permissions.permission_id", ondelete="RESTRICT"), primary_key=True)
-    group_id = Column(Integer, ForeignKey("Permission_Group.group_id", ondelete="RESTRICT"), primary_key=True)
-    assigned_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    permission_id = Column(Integer, ForeignKey("permissions.permission_id", ondelete="RESTRICT"), primary_key=True)
+    group_id = Column(Integer, ForeignKey("permission_group.group_id", ondelete="RESTRICT"), primary_key=True)
+    assigned_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
     assigned_at = Column(DateTime, server_default=func.now())
 
 
 # ----------------------- AccessPoint Table -----------------------
 class AccessPoint(Base):
-    __tablename__ = "Access_Point"
+    __tablename__ = "access_point"
 
     access_id = Column(Integer, primary_key=True, index=True)
     access_uuid = Column(String(36), unique=True, nullable=False)
@@ -152,44 +146,44 @@ class AccessPoint(Base):
     is_public = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    created_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    created_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)  # ✅ Fixed: lowercase "user"
 
-    created_by_user = relationship("User", back_populates="created_access_points")
-    permission_mappings = relationship("AccessPointPermission", back_populates="access_point", cascade="all, delete-orphan")
+    created_by_user = relationship("User", back_populates="created_access_points")  # ✅ Fixed
+    permission_mappings = relationship("AccessPointPermission", back_populates="access_point", cascade="all, delete-orphan")  # ✅ Fixed
 
 
 # ----------------------- AccessPointPermission Mapping -----------------------
 class AccessPointPermission(Base):
-    __tablename__ = "Access_Point_Permission_Mapping"
+    __tablename__ = "access_point_permission_mapping"
 
     id = Column(Integer, primary_key=True, index=True)
-    access_id = Column(Integer, ForeignKey("Access_Point.access_id", ondelete="RESTRICT"))
-    permission_id = Column(Integer, ForeignKey("Permissions.permission_id", ondelete="RESTRICT"))
-    assigned_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    access_id = Column(Integer, ForeignKey("access_point.access_id", ondelete="RESTRICT"))
+    permission_id = Column(Integer, ForeignKey("permissions.permission_id", ondelete="RESTRICT"))
+    assigned_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
     assigned_at = Column(DateTime, server_default=func.now())
 
-    access_point = relationship("AccessPoint", back_populates="permission_mappings")
-    permission = relationship("Permissions", back_populates="access_mappings")
-    assigned_by_user = relationship("User", back_populates="assigned_permissions")
+    access_point = relationship("AccessPoint", back_populates="permission_mappings")  # ✅ Fixed
+    permission = relationship("Permissions", back_populates="access_mappings")  # ✅ Fixed
+    assigned_by_user = relationship("User", back_populates="assigned_permissions")  # ✅ Fixed
 
 
 # ----------------------- Role-Permission Group Mapping -----------------------
 class Role_Permission_Group(Base):
-    __tablename__ = "Role_Permission_Group"
+    __tablename__ = "role_permission_group"
 
-    role_id = Column(Integer, ForeignKey("Role.role_id", ondelete="RESTRICT"), primary_key=True)
-    group_id = Column(Integer, ForeignKey("Permission_Group.group_id", ondelete="RESTRICT"), primary_key=True)
-    assigned_by = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    role_id = Column(Integer, ForeignKey("role.role_id", ondelete="RESTRICT"), primary_key=True)
+    group_id = Column(Integer, ForeignKey("permission_group.group_id", ondelete="RESTRICT"), primary_key=True)
+    assigned_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
     assigned_at = Column(DateTime, server_default=func.now())
 
 
 # ----------------------- AuditTrail Table -----------------------
 class AuditTrail(Base):
-    __tablename__ = "Audit_Trail"
+    __tablename__ = "audit_trail"
 
     audit_id = Column(Integer, primary_key=True, index=True)
     audit_uuid = Column(String(36), unique=True, nullable=False)
-    user_id = Column(Integer, ForeignKey("User.user_id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)
     action_type = Column(Enum('CREATE','UPDATE','DELETE','LOGIN','LOGOUT','ASSIGN_ROLE','ASSIGN_PERMISSION','OTHER', name="action_type_enum"), nullable=False)
     entity_type = Column(String(100), nullable=False)
     entity_id = Column(Integer, nullable=True)
@@ -199,4 +193,4 @@ class AuditTrail(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
-    user = relationship("User", back_populates="audit_trails")
+    user = relationship("User", back_populates="audit_trails")  # ✅ Fixed

@@ -254,8 +254,8 @@ class AccessPointDAO:
         """
         query = text("""
             SELECT p.permission_code 
-            FROM Access_Point_Permission_Mapping appm
-            JOIN Permissions p ON appm.permission_id = p.permission_id
+            FROM access_point_permission_mapping appm
+            JOIN permissions p ON appm.permission_id = p.permission_id
             WHERE appm.access_id = :access_id
         """)
         
@@ -273,7 +273,7 @@ class AccessPointDAO:
         try:
             # First, let's check if the access point exists
             access_point_check = self.db.execute(
-                text("SELECT * FROM Access_Point WHERE access_id = :access_id"),
+                text("SELECT * FROM access_point WHERE access_id = :access_id"),
                 {"access_id": access_id}
             ).fetchone()
             
@@ -283,7 +283,7 @@ class AccessPointDAO:
             
             # Check mapping table
             mapping_query = text("""
-                SELECT * FROM Access_Point_Permission_Mapping 
+                SELECT * FROM access_point_permission_mapping 
                 WHERE access_id = :access_id
             """)
             mappings = self.db.execute(mapping_query, {"access_id": access_id}).fetchall()
@@ -294,8 +294,8 @@ class AccessPointDAO:
             # Get permissions with full query
             query = text("""
                 SELECT p.permission_id, p.permission_code, p.permission_name
-                FROM Access_Point_Permission_Mapping appm
-                JOIN Permissions p ON appm.permission_id = p.permission_id
+                FROM access_point_permission_mapping appm
+                JOIN permissions p ON appm.permission_id = p.permission_id
                 WHERE appm.access_id = :access_id
             """)
             
