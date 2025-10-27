@@ -8,6 +8,7 @@ mysql-connector-python==9.3.0
 pydantic==2.11.4
 pydantic[email]
 passlib==1.7.4
+cryptography
 openpyxl
 python-multipart
 redis
