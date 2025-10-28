@@ -95,12 +95,22 @@ CREATE TABLE IF NOT EXISTS Access_Point (
     access_uuid CHAR(36) NOT NULL UNIQUE,
     endpoint_path VARCHAR(255) NOT NULL,
     regex_pattern VARCHAR(255),
-    method ENUM('GET', 'POST', 'PUT', 'DELETE') NOT NULL,
+    method ENUM(
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+        'TRACE',
+        'CONNECT'
+    ) NOT NULL,
     module VARCHAR(100) NOT NULL,
     is_public BOOLEAN DEFAULT FALSE,
+    created_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by INT NULL,
     FOREIGN KEY (created_by) REFERENCES User(user_id) ON DELETE SET NULL
 );
 
