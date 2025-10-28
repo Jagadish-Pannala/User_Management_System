@@ -183,6 +183,26 @@ def deactivate_user_uuid(
         return {"message": "User deactivated successfully"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+@router.patch("/uuid/{user_uuid}/activate")
+def activate_user_uuid(
+    user_uuid: str,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Activate user by UUID (set is_active = True)
+    """
+    try:
+        user_service.activate_user_uuid(
+            user_uuid,
+            current_user=current_user,
+            request=request
+        )
+        return {"message": "User activated successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.put("/{user_id}/role")
 def update_user_roles(

@@ -458,7 +458,27 @@ class UserService:
         if not user:
             raise ValueError("User not found")
         self.dao.deactivate_user(user)
-        
+
+    @audit_action_with_request(
+    action_type='PUT',
+    entity_type='User',
+    get_entity_id=lambda self, user_uuid, *args, **kwargs: self.dao.get_user_by_uuid(user_uuid).user_id if self.dao.get_user_by_uuid(user_uuid) else None,
+    capture_old_data=True,
+    description="Activated user account"
+    )
+    def activate_user_uuid(self, user_uuid, current_user, **kwargs):
+        current_user_roles = current_user['roles']
+        user = self.dao.get_user_by_uuid(user_uuid)
+        if not user:
+            raise ValueError("User not found")
+
+        user_roles = self.get_user_roles_by_uuid(user_uuid)
+
+        # Restrict privilege escalation
+        if 'Super Admin' not in current_user_roles and 'Super Admin' in user_roles:
+            raise HTTPException(status_code=403, detail="Only Super Admins can activate Super Admin accounts.")
+
+        self.dao.activate_user(user)    
     
     @audit_action_with_request(
     action_type='ASSIGN_ROLE',

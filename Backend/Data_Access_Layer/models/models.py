@@ -133,7 +133,8 @@ class Permission_Group_Mapping(Base):
     assigned_at = Column(DateTime, server_default=func.now())
 
 
-# ----------------------- AccessPoint Table -----------------------
+
+
 class AccessPoint(Base):
     __tablename__ = "access_point"
 
@@ -141,15 +142,43 @@ class AccessPoint(Base):
     access_uuid = Column(String(36), unique=True, nullable=False)
     endpoint_path = Column(String(255), nullable=False)
     regex_pattern = Column(String(255), nullable=True)
-    method = Column(Enum("GET", "POST", "PUT", "DELETE", name="http_method_enum"), nullable=False)
+
+    # ✅ Updated to include all common HTTP methods
+    method = Column(
+        Enum(
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "PATCH",
+            "HEAD",
+            "OPTIONS",
+            "TRACE",
+            "CONNECT",
+            name="http_method_enum"
+        ),
+        nullable=False
+    )
+
     module = Column(String(100), nullable=False)
     is_public = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    created_by = Column(Integer, ForeignKey("user.user_id", ondelete="SET NULL"), nullable=True)  # ✅ Fixed: lowercase "user"
 
-    created_by_user = relationship("User", back_populates="created_access_points")  # ✅ Fixed
-    permission_mappings = relationship("AccessPointPermission", back_populates="access_point", cascade="all, delete-orphan")  # ✅ Fixed
+    created_by = Column(
+        Integer,
+        ForeignKey("user.user_id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # ✅ Relationships
+    created_by_user = relationship("User", back_populates="created_access_points")
+    permission_mappings = relationship(
+        "AccessPointPermission",
+        back_populates="access_point",
+        cascade="all, delete-orphan"
+    )
+
 
 
 # ----------------------- AccessPointPermission Mapping -----------------------

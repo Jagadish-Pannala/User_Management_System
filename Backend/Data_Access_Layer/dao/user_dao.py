@@ -273,6 +273,17 @@ class UserDAO:
         except SQLAlchemyError:
             self.db.rollback()
             raise
+    
+    def activate_user(self, user: models.User) -> None:
+        try:
+            now = datetime.utcnow()
+            user.updated_at = now
+            user.is_active = True
+            self.db.commit()
+        except SQLAlchemyError:
+            self.db.rollback()
+            raise
+
 
     # --------------------------
     # USER DELETE OPERATIONS
