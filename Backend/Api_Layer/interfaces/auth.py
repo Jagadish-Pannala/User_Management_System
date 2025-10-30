@@ -28,4 +28,7 @@ class ChangePasswordFirstLogin(BaseModel):
     email: str
     confirm_password: str
     new_password: str
+class PermissionCheck(BaseModel):
+    method: str
+    path: str
 
