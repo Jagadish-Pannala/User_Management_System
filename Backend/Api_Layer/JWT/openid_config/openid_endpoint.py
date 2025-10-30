@@ -35,18 +35,45 @@ def openid_config():
     return JSONResponse(content=config)
 @router.post("/middleware/check-permission")
 async def permission_check_endpoint(request: Request, data: PermissionCheck):
-    print(f"📍 Endpoint Hit - Method: {request.method}")
-    print(f"📍 Full URL: {request.url}")
-    print(f"📍 Headers: {dict(request.headers)}")
-    print(f"📍 Client: {request.client}")
-    print(f"📥 Data received: path={data.path}, method={data.method}")
-    
-    token_data = request.state.user
-    response = check_permission(data.path, data.method, token_data)
-    if isinstance(response, JSONResponse):
-        return response
-    
-    return {"allowed": True}
+    try:
+        print(f"✅ POST ENDPOINT HIT!")
+        print(f"📍 Method: {request.method}")
+        print(f"📍 Path: {request.url.path}")
+        print(f"📍 Client IP: {request.client.host if request.client else 'Unknown'}")
+        print(f"📥 Data: path={data.path}, method={data.method}")
+        
+        # Check if user data exists
+        if not hasattr(request.state, "user") or request.state.user is None:
+            print("❌ No user data in request.state")
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Unauthorized - no user data"}
+            )
+        
+        token_data = request.state.user
+        print(f"👤 User data: {token_data}")
+        
+        # Get DB session if available
+        db = getattr(request.state, "db", None)
+        print(f"💾 DB session: {'Available' if db else 'Not available'}")
+        
+        response = check_permission(data.path, data.method, token_data, db_session=db)
+        
+        if isinstance(response, JSONResponse):
+            print(f"❌ Permission denied")
+            return response
+        
+        print(f"✅ Permission granted")
+        return {"allowed": True}
+        
+    except Exception as e:
+        print(f"💥 ERROR in permission_check_endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal error: {str(e)}"}
+        )
 
 @router.get("/middleware/check-permission")
 async def permission_check_get_handler(request: Request):
