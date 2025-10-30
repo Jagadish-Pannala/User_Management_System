@@ -57,7 +57,7 @@ class AuthService:
 
         return {"msg": "User registered successfully", "user_id": created_user.user_id}
 
-    def login_user(self, credentials: LoginUser, client_ip: str):
+    def login_user(self, credentials: LoginUser, client_ip: str, request: Request):
         dao = self._get_dao()
 
         validate_email_format(credentials.email)
@@ -81,7 +81,7 @@ class AuthService:
             "roles": roles,
             "permissions": permissions
         }
-        access_token = token_create(token_data)
+        access_token = token_create(token_data, request = request)
 
         redirect = "/dashboard"
         if dao.check_user_first_login(user.user_id):
@@ -94,7 +94,7 @@ class AuthService:
             "redirect": redirect
         }
     
-    def handle_microsoft_callback(self, code: str,client_ip):
+    def handle_microsoft_callback(self, code: str,client_ip, request: Request):
         print("1. Received code:", code)
  
         token_url = f"https://login.microsoftonline.com/{get_env_var('TENANT_ID')}/oauth2/v2.0/token"
@@ -167,7 +167,7 @@ class AuthService:
             "permissions": permissions
         }
  
-        access_token = token_create(token_data)
+        access_token = token_create(token_data, request = request)
         redirect = "/dashboard"
         if dao.check_user_first_login(user.user_id):
             redirect = "/change-password"
