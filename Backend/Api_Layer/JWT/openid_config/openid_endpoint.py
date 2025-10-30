@@ -35,17 +35,25 @@ def openid_config():
     return JSONResponse(content=config)
 @router.post("/middleware/check-permission")
 async def permission_check_endpoint(request: Request, data: PermissionCheck):
-    print(f"📥 Permission check request: path={data.path}, method={data.method}")
+    print(f"📍 Endpoint Hit - Method: {request.method}")
+    print(f"📍 Full URL: {request.url}")
+    print(f"📍 Headers: {dict(request.headers)}")
+    print(f"📍 Client: {request.client}")
+    print(f"📥 Data received: path={data.path}, method={data.method}")
     
     token_data = request.state.user
-    print(f"👤 User data: {token_data}")
-    
     response = check_permission(data.path, data.method, token_data)
     if isinstance(response, JSONResponse):
-        print(f"❌ Permission denied")
         return response
     
-    print(f"✅ Permission granted")
     return {"allowed": True}
 
-
+@router.get("/middleware/check-permission")
+async def permission_check_get_handler(request: Request):
+    print(f"❌ GET REQUEST RECEIVED - This endpoint only accepts POST")
+    print(f"📍 Client: {request.client}")
+    print(f"📍 Headers: {dict(request.headers)}")
+    return JSONResponse(
+        status_code=405,
+        content={"error": "Method Not Allowed. Use POST instead of GET"}
+    )

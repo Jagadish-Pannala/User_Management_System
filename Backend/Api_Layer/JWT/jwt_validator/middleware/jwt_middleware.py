@@ -11,7 +11,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         print("JWT Middleware - ENTERING")
 
-        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
+        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known", "/middleware"]
         if request.method == "OPTIONS" or any(request.url.path.startswith(p) for p in public_paths):
             return await call_next(request)
 
