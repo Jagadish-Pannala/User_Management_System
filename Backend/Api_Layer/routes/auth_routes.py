@@ -19,9 +19,9 @@ def register(user_data: RegisterUser):
 
 
 @router.post("/login")
-def login(credentials: LoginUser,request: Request = None):
+def login(credentials: LoginUser,request: Request):
     client_ip = auth_service.get_client_ip(request)
-    return auth_service.login_user(credentials,client_ip)
+    return auth_service.login_user(credentials,client_ip, request)
 
 @router.post("/logout")
 def logout(request: Request, current_user: dict = Depends(get_current_user)):
@@ -59,11 +59,11 @@ def ms_login():
  
  
 @router.get("/callback")
-def handle_microsoft_callback(code: str,request: Request = None):
+def handle_microsoft_callback(code: str,request: Request):
     try:
         print("Received code:", code)
         client_ip = auth_service.get_client_ip(request)
-        return auth_service.handle_microsoft_callback(code,client_ip)
+        return auth_service.handle_microsoft_callback(code,client_ip, request)
     except HTTPException as http_exc:
         print("HTTPException:", http_exc.status_code, http_exc.detail)
         raise http_exc

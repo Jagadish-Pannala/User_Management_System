@@ -6,7 +6,6 @@ from Backend.config.env_loader import get_env_var
 # Token settings
 ALGORITHM = "RS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
-ISSUER = get_env_var("ISSUER")  # Load from environment variable
 KID = "auth-key-001"  # Must match JWKS key later
 
 # Path to private key
