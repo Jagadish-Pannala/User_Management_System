@@ -128,6 +128,16 @@ def remove_permission_group_from_role(
     return service.remove_permission_group_from_role(role_uuid, group_uuid,current_user=current_user,
             request=request)
 
+@router.delete("/uuid/{role_uuid}/groups")
+def remove_permission_groups_to_role(
+    role_uuid: str,
+    payload: RoleGroupRequest,
+    request: Request,
+    service: RoleService = Depends(get_role_service),
+    current_user: dict = Depends(get_current_user)
+):
+    return service.remove_permission_groups_to_role(role_uuid, payload.group_uuids,current_user=current_user,request=request)
+
 @router.get("/{role_uuid}/available-groups",response_model=List[Group])
 def get_unassigned_permission_groups_for_role(
     role_uuid: str,

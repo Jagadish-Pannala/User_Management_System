@@ -226,7 +226,39 @@ class RoleService:
             )
     
     
-    
+    @audit_action_with_request(
+    action_type='DELETE',
+    entity_type='Role_Permission_Groups',
+    get_entity_id=lambda self, role_uuid, *args, **kwargs: (
+        role_dao.get_role_by_uuid(self.db, role_uuid).role_id
+        if role_dao.get_role_by_uuid(self.db, role_uuid)
+        else None
+    ),
+    description='Removed multiple permission groups from role UUID: {role_uuid}'
+    )
+    def remove_permission_groups_to_role(self, role_uuid: str, group_uuids: list[str], audit_data=None, **kwargs):
+        removed_groups = []
+        for group_uuid in group_uuids:
+            group = role_dao.get_permission_group_by_uuid(self.db, group_uuid)
+            if group:
+                removed_groups.append(group.group_name)
+
+        print("Removed Groups for Audit:", removed_groups)
+        try:
+            result = role_dao.remove_permission_groups_from_role(
+                self.db,
+                role_uuid,
+                group_uuids
+            )
+
+            if audit_data is not None:
+                audit_data["old_data"] = {"removed_groups": removed_groups}
+
+            return result
+
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to remove permission groups: {str(e)}")
 
 
     def update_permission_groups_for_role(self, role_id: int, group_ids: list[int]):
