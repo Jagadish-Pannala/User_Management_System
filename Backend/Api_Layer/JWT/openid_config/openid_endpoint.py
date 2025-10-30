@@ -35,12 +35,17 @@ def openid_config():
     return JSONResponse(content=config)
 @router.post("/middleware/check-permission")
 async def permission_check_endpoint(request: Request, data: PermissionCheck):
+    print(f"📥 Permission check request: path={data.path}, method={data.method}")
+    
     token_data = request.state.user
+    print(f"👤 User data: {token_data}")
+    
     response = check_permission(data.path, data.method, token_data)
     if isinstance(response, JSONResponse):
+        print(f"❌ Permission denied")
         return response
     
-    # If not a JSONResponse, return success
+    print(f"✅ Permission granted")
     return {"allowed": True}
 
 
