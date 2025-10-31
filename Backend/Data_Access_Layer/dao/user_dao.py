@@ -45,18 +45,22 @@ class UserDAO:
         return self.db.query(models.User).all()
     
     def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
-        query = self.db.query(models.User).options(load_only(
-            models.User.user_id,
-            models.User.user_uuid,
-            models.User.first_name,
-            models.User.last_name,
-            models.User.mail,
-            models.User.contact,
-            models.User.is_active
-        ))
+        base_query = (
+            self.db.query(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail,
+                models.User.contact,
+                models.User.is_active
+            )
+        )
+
         if search:
-            search_pattern = f"%{search.lower()}%"
-            query = query.filter(
+            search = search.strip().lower()
+            search_pattern = f"%{search}%"
+            base_query = base_query.filter(
                 or_(
                     func.lower(models.User.first_name).like(search_pattern),
                     func.lower(models.User.last_name).like(search_pattern),
@@ -64,10 +68,20 @@ class UserDAO:
                     models.User.contact.like(search_pattern)
                 )
             )
-        total = query.count()
-        users = query.offset((page - 1) * limit).limit(limit).all()
-        return {"total": total, "users": users}
 
+        # ✅ Count efficiently
+        total = self.db.query(func.count(models.User.user_id)).select_from(base_query.subquery()).scalar()
+
+        # ✅ Fetch paginated users
+        users = (
+            base_query
+            .order_by(models.User.first_name)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .all()
+        )
+
+        return {"total": total, "users": users}
 
     def get_all_active_users(self) -> List[models.User]:
         return self.db.query(models.User).filter(
