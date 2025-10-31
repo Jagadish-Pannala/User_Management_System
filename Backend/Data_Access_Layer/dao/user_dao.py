@@ -153,7 +153,7 @@ class UserDAO:
 
 
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
-        # ✅ Base query with roles joined
+        # ✅ Step 1: Base query joining users with roles
         base_query = (
             self.db.query(
                 models.User.user_id,
@@ -161,90 +161,52 @@ class UserDAO:
                 models.User.first_name,
                 models.User.last_name,
                 models.User.mail,
-                models.Role.role_name
+                func.group_concat(models.Role.role_name).label("roles")
             )
             .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
-            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+            .join(models.Role, models.Role.role_id == models.User_Role.role_id)
+            .group_by(models.User.user_id)
         )
 
-        # ✅ Apply case-insensitive search filters
+        # ✅ Step 2: Apply search (case-insensitive for name, mail, and role)
         if search:
-            search = search.strip().lower()
-            search_pattern = f"%{search}%"
-            base_query = base_query.filter(
+            search = f"%{search.strip().lower()}%"
+            base_query = base_query.having(
                 or_(
-                    func.lower(models.User.first_name).like(search_pattern),
-                    func.lower(models.User.last_name).like(search_pattern),
-                    func.lower(models.User.mail).like(search_pattern),
-                    func.lower(models.Role.role_name).like(search_pattern),
+                    func.lower(models.User.first_name).like(search),
+                    func.lower(models.User.last_name).like(search),
+                    func.lower(models.User.mail).like(search),
+                    func.lower(func.group_concat(models.Role.role_name)).like(search),
                 )
             )
 
-        # ✅ Build subquery for unique users (with search applied)
-        user_subquery = (
+        # ✅ Step 3: Efficient total count
+        total = self.db.query(func.count()).select_from(base_query.subquery()).scalar()
+
+        # ✅ Step 4: Paginate results
+        users = (
             base_query
-            .distinct(models.User.user_id)
-            .with_entities(
-                models.User.user_id,
-                models.User.user_uuid,
-                models.User.first_name,
-                models.User.last_name,
-                models.User.mail
-            )
             .order_by(models.User.first_name)
-            .subquery()
-        )
-
-        # ✅ Total count of filtered distinct users
-        total = self.db.query(func.count()).select_from(user_subquery).scalar()
-
-        # ✅ Paginated users
-        paginated_users = (
-            self.db.query(user_subquery)
             .offset((page - 1) * limit)
             .limit(limit)
             .all()
         )
 
-        user_ids = [u.user_id for u in paginated_users]
-        if not user_ids:
-            return {"total": total, "users": []}
-
-        # ✅ Fetch roles for paginated users only
-        role_query = (
-            self.db.query(
-                models.User.user_id,
-                models.Role.role_name
-            )
-            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
-            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
-            .filter(models.User.user_id.in_(user_ids))
-            .all()
-        )
-
-        # ✅ Map roles to users
-        user_map = {
-            u.user_uuid: {
+        # ✅ Step 5: Transform result
+        result_users = [
+            {
                 "user_uuid": u.user_uuid,
                 "name": f"{u.first_name} {u.last_name}".strip(),
                 "mail": u.mail,
-                "roles": [],
+                "roles": u.roles.split(",") if u.roles else []
             }
-            for u in paginated_users
-        }
-
-        for user_id, role_name in role_query:
-            for u in paginated_users:
-                if u.user_id == user_id:
-                    user_map[u.user_uuid]["roles"].append(role_name)
-                    break
+            for u in users
+        ]
 
         return {
             "total": total,
-            "users": list(user_map.values())
+            "users": result_users
         }
-
-
 
 
     # --------------------------
