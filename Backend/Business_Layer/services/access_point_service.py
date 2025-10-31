@@ -1,4 +1,6 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
+import pandas as pd
+import io
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.access_point_dao import AccessPointDAO
 from ...Api_Layer.interfaces.access_point import AccessPointCreate, AccessPointUpdate, AccessPointOut
@@ -18,13 +20,6 @@ class AccessPointService:
         self.dao = AccessPointDAO(self.db)
         self.permission_dao = PermissionDAO(self.db)
 
-    # def create_access_point(self, data: AccessPointCreate):
-    #     ap_dict = data.dict(exclude_unset=True)
-    #     access_point = self.dao.create_access_point(**ap_dict)
-    #     return {
-    #         "access_id": access_point.access_id,
-    #         "message": "Access point created successfully"
-    #     }
 
     def normalize_endpoint(self, endpoint: str) -> str:
         """
@@ -57,19 +52,7 @@ class AccessPointService:
             clear_all_access_point_cache()
         
 
-    # def list(self):
-    #     """
-    #     Return all access points — cached.
-    #     """
-    #     cache_key = "access_points_cache"
-    #     cached_data = redis_client.get(cache_key)
-    #     if cached_data:
-    #         return json.loads(cached_data)
 
-    #     aps = self.dao.get_all_access_points()
-    #     data = [ap.to_dict() for ap in aps]  # Convert SQLAlchemy objects
-    #     redis_client.setex(cache_key, 300, json.dumps(data))  # Cache for 5 min
-    #     return data
 
     @audit_action_with_request(
     action_type='CREATE',
@@ -87,9 +70,10 @@ class AccessPointService:
         ap_dict["created_by"] = created_by_user_id
         ap_dict["access_uuid"] = generate_uuid7()  
         
-        existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))
+        existing = self.dao.get_access_point_by_path_and_method(ap_dict.get("endpoint_path"), ap_dict.get("method"))
+        print("Existing access point check:", existing.endpoint_path, existing.method if existing else "None")
 
-        if existing and existing.method.upper() == ap_dict["method"].upper():
+        if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Access point with this endpoint_path AND method '{ap_dict['method']}' already exists"
@@ -132,6 +116,155 @@ class AccessPointService:
             "access_uuid": access_point.access_uuid,
             "message": "Access point created successfully"
         }
+    
+    @audit_action_with_request(
+        action_type='CREATE',
+        entity_type='AccessPoint',
+        capture_new_data=True,
+        description='Bulk created access points from Excel file'
+    )
+    def bulk_create_access_points(self, file: UploadFile, created_by_user_id: int, **kwargs):
+        audit_data = kwargs.get('audit_data', {})
+        
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only Excel files (.xlsx, .xls) are supported"
+            )
+        
+        try:
+            # Read file content into BytesIO (THIS IS THE FIX)
+            contents = file.file.read()
+            df = pd.read_excel(io.BytesIO(contents))
+            
+            # Validate required columns
+            required_columns = ['endpoint_path', 'method', 'module']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                print(f"Missing columns in Excel: {missing_columns}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Missing required columns: {', '.join(missing_columns)}"
+                )
+            
+            # Optional column with default value
+            if 'is_public' not in df.columns:
+                df['is_public'] = False
+            
+            # Remove rows with missing required values
+            df = df.dropna(subset=required_columns)
+            
+            if df.empty:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No valid data found in the Excel file"
+                )
+            
+            created_access_points = []
+            errors = []
+            
+            # Process each row
+            for index, row in df.iterrows():
+                if bool(row['is_public']) == True and row['is_public'] not in [1,'1']:
+                    is_public_value = 0
+                else:
+                    is_public_value = 1
+                try:
+                    ap_dict = {
+                        "endpoint_path": str(row['endpoint_path']).strip(),
+                        "method": str(row['method']).strip().upper(),
+                        "module": str(row['module']).strip(),
+                        "is_public": is_public_value,
+                        "regex_pattern": self.normalize_endpoint(str(row['endpoint_path']).strip()),
+                        "created_by": created_by_user_id,
+                        "access_uuid": generate_uuid7()
+                    }
+                    
+                    # Check if access point already exists
+                    existing = self.dao.get_access_point_by_path_and_method(ap_dict["endpoint_path"], ap_dict["method"])
+                    
+                    if existing:
+                        errors.append({
+                            "row": index + 2,
+                            "endpoint_path": ap_dict["endpoint_path"],
+                            "method": ap_dict["method"],
+                            "error": "Access point with this endpoint_path and method already exists"
+                        })
+                        continue
+                    
+                    # Create access point
+                    access_point = self.dao.create_access_point(**ap_dict)
+                    
+                    # Set cache
+                    set_access_point_cache(access_point.method, access_point.endpoint_path, {
+                        "access_point": {
+                            "is_public": access_point.is_public,
+                            "access_id": access_point.access_id
+                        },
+                        "required_permissions": []
+                    })
+                    
+                    created_access_points.append({
+                        "access_uuid": access_point.access_uuid,
+                        "message": "Access point created successfully"
+                    })
+                    
+                except IntegrityError as e:
+                    errors.append({
+                        "row": index + 2,
+                        "endpoint_path": row.get('endpoint_path', 'N/A'),
+                        "method": row.get('method', 'N/A'),
+                        "error": "Invalid data or constraint violation"
+                    })
+                except Exception as e:
+                    errors.append({
+                        "row": index + 2,
+                        "endpoint_path": row.get('endpoint_path', 'N/A'),
+                        "method": row.get('method', 'N/A'),
+                        "error": str(e)
+                    })
+            
+            # Update audit data
+            audit_data['entity_id'] = None
+            audit_data['new_data'] = {
+                "total_rows": len(df),
+                "successful_creates": len(created_access_points),
+                "failed_creates": len(errors),
+                "errors": errors[:10]
+            }
+            
+            # Return with summary
+            response_data = {
+                "summary": {
+                    "total_rows": len(df),
+                    "successful": len(created_access_points),
+                    "failed": len(errors)
+                },
+                "created_access_points": created_access_points,
+                "errors": errors if errors else []
+            }
+            
+            if not created_access_points and errors:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=response_data
+                )
+            
+            return response_data
+            
+        except pd.errors.EmptyDataError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Excel file is empty"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process Excel file: {str(e)}"
+            )
+
 
     def list(self):
         access_points = self.dao.get_all_access_points()
