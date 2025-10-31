@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from uuid import UUID
 from datetime import datetime
 
@@ -50,6 +50,10 @@ class CreateAPResponse(BaseModel):
     access_uuid: str
     message: str
 
+class BulkCreateAPResponse(BaseModel):
+    summary: dict
+    created_access_points: List[CreateAPResponse]
+    errors: List[dict]
 
 class PermissionMappingIn(BaseModel):
     permission_uuid: str

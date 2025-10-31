@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends,Request
+from fastapi import APIRouter, HTTPException, Depends,Request, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -6,7 +6,7 @@ from ..interfaces.access_point import (
     AccessPointCreate,
     AccessPointUpdate,
     AccessPointOut,
-    CreateAPResponse,PermissionMappingIn
+    CreateAPResponse,PermissionMappingIn,BulkCreateAPResponse
 )
 from ...Business_Layer.services.access_point_service import AccessPointService
 from ...Data_Access_Layer.utils.dependency import get_db
@@ -49,6 +49,15 @@ def create_ap(
     service: AccessPointService = Depends(get_access_point_service)
 ):
     return service.create_access_point(data,created_by_user_id=current_user['user_id'],request=request,current_user=current_user)
+
+@router.post("/bulk-access-points-create", response_model=BulkCreateAPResponse)
+def bulk_create_ap(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    service: AccessPointService = Depends(get_access_point_service)
+):
+    return service.bulk_create_access_points(file=file,created_by_user_id=current_user['user_id'],request=request,current_user=current_user)
 
 
 @router.get("/", response_model=List[AccessPointOut])
