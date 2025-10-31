@@ -70,7 +70,7 @@ class UserDAO:
             )
 
         # ✅ Count efficiently
-        total = self.db.query(func.count(models.User.user_id)).select_from(base_query.subquery()).scalar()
+        total = self.db.query(func.count(func.distinct(models.User.user_id))).select_from(base_query.subquery()).scalar()
 
         # ✅ Fetch paginated users
         users = (
