@@ -128,7 +128,7 @@ def remove_permission_group_from_role(
     return service.remove_permission_group_from_role(role_uuid, group_uuid,current_user=current_user,
             request=request)
 
-@router.delete("/uuid/{role_uuid}/groups")
+@router.post("/uuid/{role_uuid}/groups/remove")
 def remove_permission_groups_to_role(
     role_uuid: str,
     payload: RoleGroupRequest,

@@ -222,13 +222,16 @@ def remove_permission_group_from_role(db: Session, role_uuid: str, group_uuid: s
 
 def remove_permission_groups_from_role(db: Session, role_uuid: str, group_uuids: list[str]):
     role = get_role_by_uuid(db, role_uuid)
-    if not role:    
+    if not role:
         raise HTTPException(
             status_code=400,
             detail=f"Role ID {role_uuid} does not exist"
-        )   
+        )
+
     role_id = role.role_id
     group_ids = []
+
+    # Validate all group UUIDs first
     for group_uuid in group_uuids:
         group = get_permission_group_by_uuid(db, group_uuid)
         if not group:
@@ -237,21 +240,33 @@ def remove_permission_groups_from_role(db: Session, role_uuid: str, group_uuids:
                 detail=f"Permission group UUID {group_uuid} does not exist"
             )
         group_ids.append(group.group_id)
-    group_ids = list({int(g) for g in group_ids})
-    print("group_ids to remove",group_ids)
-    for gid in group_ids:
-        assignment = db.query(models.Role_Permission_Group)\
-                   .filter_by(role_id=role_id, group_id=gid)\
-                   .first()
-        if not assignment:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Permission group ID {group_uuid} is not assigned to role ID {role_uuid}"
-            )
 
-        db.delete(assignment)
+    group_ids = list({int(g) for g in group_ids})
+    print("group_ids to remove", group_ids)
+
+    try:
+        # Start transaction
+        for gid in group_ids:
+            assignment = db.query(models.Role_Permission_Group)\
+                           .filter_by(role_id=role_id, group_id=gid)\
+                           .first()
+            if not assignment:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Permission group ID {gid} is not assigned to role ID {role_uuid}"
+                )
+
+            db.delete(assignment)
+
+        # ✅ Commit only once if all deletions succeed
         db.commit()
-    return {"message": "Permission groups removed successfully"}
+        return {"message": "Permission groups removed successfully"}
+
+    except Exception as e:
+        # ⚠️ Rollback everything if any error occurs
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove permission groups: {str(e)}")
+
     
 
 
