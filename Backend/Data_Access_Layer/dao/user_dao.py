@@ -105,8 +105,40 @@ class UserDAO:
         """
         existing_emails = self.get_users_by_emails(emails)
         return {email: email in existing_emails for email in emails}
+    
+    def get_users_with_roles_id(self) -> List[dict]:
+        results = (
+            self.db.query(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail,
+                models.Role.role_name
+            )
+            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
+            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+            .all()
+        )
+
+        user_map = {}
+        for user_id, user_uuid, first_name, last_name, mail, role_name in results:
+            if user_uuid not in user_map:
+                user_map[user_uuid] = {
+                    "user_id": user_id,
+                    "user_uuid": user_uuid,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "mail": mail,
+                    "roles": []
+                }
+            user_map[user_uuid]["roles"].append(role_name)
+
+        return list(user_map.values())
+
 
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
+        # ✅ Create base query joining roles
         base_query = (
             self.db.query(
                 models.User.user_id,
@@ -119,6 +151,7 @@ class UserDAO:
             .join(models.Role, models.User_Role.role_id == models.Role.role_id)
         )
 
+        # ✅ Apply search filters dynamically
         if search:
             search_pattern = f"%{search.lower()}%"
             base_query = base_query.filter(
@@ -130,12 +163,12 @@ class UserDAO:
                 )
             )
 
-        # ✅ Count unique users only
-        total = self.db.query(func.count(distinct(models.User.user_id))).select_from(
-            base_query.subquery()
-        ).scalar()
+        # ✅ Count distinct users (avoid duplicates due to join)
+        total = self.db.query(
+            func.count(distinct(models.User.user_id))
+        ).select_from(base_query.subquery()).scalar()
 
-        # ✅ Get unique users for the current page
+        # ✅ Get paginated distinct users
         user_subquery = (
             self.db.query(
                 models.User.user_id,
@@ -144,13 +177,16 @@ class UserDAO:
                 models.User.last_name,
                 models.User.mail
             )
+            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
+            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
             .distinct(models.User.user_id)
+            .order_by(models.User.first_name)
             .offset((page - 1) * limit)
             .limit(limit)
             .subquery()
         )
 
-        # ✅ Fetch roles only for those users in this page
+        # ✅ Fetch all roles for only users in this page
         role_query = (
             self.db.query(
                 user_subquery.c.user_id,
@@ -166,20 +202,23 @@ class UserDAO:
             .all()
         )
 
-        # ✅ Combine roles per user
+        # ✅ Combine multiple roles for same user
         user_map = {}
         for user_id, user_uuid, first_name, last_name, mail, role_name in role_query:
             if user_uuid not in user_map:
                 user_map[user_uuid] = {
                     "user_uuid": user_uuid,
-                    "first_name": first_name,
-                    "last_name": last_name,
+                    "name": f"{first_name} {last_name}",
                     "mail": mail,
                     "roles": [],
                 }
             user_map[user_uuid]["roles"].append(role_name)
 
-        return {"total": total, "users": list(user_map.values())}
+        return {
+            "total": total,
+            "users": list(user_map.values())
+        }
+
 
 
     # --------------------------

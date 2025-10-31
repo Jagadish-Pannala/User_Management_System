@@ -35,20 +35,11 @@ class UserService:
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None):
         users_data = self.dao.get_users_with_roles(page, limit, search)
 
-        result = []
-        for user in users_data["users"]:
-            full_name = f"{user['first_name']} {user['last_name']}".strip()
-            result.append({
-                "user_uuid": user["user_uuid"],
-                "name": full_name,
-                "roles": user.get("roles", []),
-                "mail": user["mail"]
-            })
-
-        return {"total": users_data["total"], "users": result}
+        return users_data
+    
     
     def get_users_with_roles_id(self):
-        users = self.dao.get_users_with_roles()
+        users = self.dao.get_users_with_roles_id()
         result = []
         for user in users:
             full_name = f"{user['first_name']} {user['last_name']}"
