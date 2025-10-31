@@ -70,9 +70,10 @@ class AccessPointService:
         ap_dict["created_by"] = created_by_user_id
         ap_dict["access_uuid"] = generate_uuid7()  
         
-        existing = self.dao.get_by_endpoint_path(ap_dict.get("endpoint_path"))
+        existing = self.dao.get_access_point_by_path_and_method(ap_dict.get("endpoint_path"), ap_dict.get("method"))
+        print("Existing access point check:", existing.endpoint_path, existing.method if existing else "None")
 
-        if existing and existing.method.upper() == ap_dict["method"].upper():
+        if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Access point with this endpoint_path AND method '{ap_dict['method']}' already exists"
@@ -182,9 +183,9 @@ class AccessPointService:
                     }
                     
                     # Check if access point already exists
-                    existing = self.dao.get_by_endpoint_path(ap_dict["endpoint_path"])
+                    existing = self.dao.get_access_point_by_path_and_method(ap_dict["endpoint_path"], ap_dict["method"])
                     
-                    if existing and existing.method.upper() == ap_dict["method"].upper():
+                    if existing:
                         errors.append({
                             "row": index + 2,
                             "endpoint_path": ap_dict["endpoint_path"],
