@@ -51,3 +51,6 @@ class PermissionResponse(BaseModel):
     
     class Config:
         from_attributes = True
+class BulkPermissionCreationResponse(BaseModel):
+    created_permissions: List[PermissionBaseCreation]
+    failed_entries: List[str]

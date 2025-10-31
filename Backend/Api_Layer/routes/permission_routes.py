@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from ...Business_Layer.services.permission_service import PermissionService
 from ..interfaces.permission_management import (
@@ -7,7 +7,8 @@ from ..interfaces.permission_management import (
     PermissionCreate,
     PermissionGroupUpdate,
     PermissionResponse,
-    PermissionBaseCreation
+    PermissionBaseCreation,
+    BulkPermissionCreationResponse
 )
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Data_Access_Layer.utils.dependency import get_db
@@ -67,6 +68,17 @@ def create_permission_basic(
 ):
     return service.create_permission_minimal(
         permission.permission_code, permission.description,current_user=current_user,
+            request=request
+    )
+@router.post("/bulk-permissions-creation", response_model=BulkPermissionCreationResponse)
+def create_bulk_permissions(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    service: PermissionService = Depends(get_permission_service)
+):
+    return service.bulk_permissions_creation(
+        file,current_user=current_user,
             request=request
     )
 

@@ -71,7 +71,6 @@ class AccessPointService:
         ap_dict["access_uuid"] = generate_uuid7()  
         
         existing = self.dao.get_access_point_by_path_and_method(ap_dict.get("endpoint_path"), ap_dict.get("method"))
-        print("Existing access point check:", existing.endpoint_path, existing.method if existing else "None")
 
         if existing:
             raise HTTPException(
@@ -167,7 +166,7 @@ class AccessPointService:
             
             # Process each row
             for index, row in df.iterrows():
-                if bool(row['is_public']) == True and row['is_public'] not in [1,'1']:
+                if bool(row['is_public']) == True and row['is_public'] not in [1,'1', False, 'False']:
                     is_public_value = 0
                 else:
                     is_public_value = 1

@@ -1,5 +1,7 @@
 import re
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, File, UploadFile
+import io
+import pandas as pd
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.permission_dao import PermissionDAO
 from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
@@ -100,6 +102,163 @@ class PermissionService:
             # DB-level error
             self.db.rollback()
             raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+    @audit_action_with_request(
+        action_type='CREATE',
+        entity_type='Permissions',
+        description='Created Bulk permissions via file upload'
+    )
+    def bulk_permissions_creation(
+        self,
+        file: UploadFile,
+        audit_data: dict = None,
+        **kwargs
+    ):
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(
+                status_code=400,
+                detail="Only Excel files (.xlsx, .xls) are supported"
+            )
+        
+        try:
+            # Read the uploaded excel file into a pandas DataFrame
+            contents = file.file.read()
+            df = pd.read_excel(io.BytesIO(contents))
+
+            required_columns = {'permission_code', 'description'}
+            
+            missing_columns = required_columns - set(df.columns)
+            if missing_columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required columns: {', '.join(missing_columns)}"
+                )
+            if 'group_name' not in df.columns:
+                df['group_name'] = 'newly_created_permissions_group'
+            
+            # Remove rows with missing required values
+            df = df.dropna(subset=list(required_columns))
+            
+            if df.empty:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No valid data found in the Excel file"
+                )
+            
+            user_id = kwargs.get('current_user', {}).get('user_id')
+            created_permissions = []
+            failed_entries = []
+            
+            for index, row in df.iterrows():
+                try:
+                    permission_code = str(row['permission_code']).strip()
+                    description = str(row['description']).strip()
+                    if 'group_name' in row and pd.notna(row['group_name']):
+                        group_name = str(row['group_name']).strip()
+                    else:
+                        group_name = 'newly_created_permissions_group'
+
+                    # Validate empty or whitespace-only values
+                    if not permission_code:
+                        failed_entries.append(
+                            f"Row {index + 2}: Permission code cannot be empty"
+                        )
+                        continue
+                    
+                    if not description:
+                        failed_entries.append(
+                            f"Row {index + 2} ({permission_code}): Description cannot be empty"
+                        )
+                        continue
+
+                    # Validate format of permission_code
+                    if not PERMISSION_CODE_PATTERN.fullmatch(permission_code):
+                        failed_entries.append(
+                            f"Row {index + 2} ({permission_code}): Invalid permission code format. Use only uppercase letters and underscores"
+                        )
+                        continue
+
+                    # Check if permission already exists
+                    existing = self.dao.get_by_code(permission_code)
+                    if existing:
+                        failed_entries.append(
+                            f"Row {index + 2} ({permission_code}): Permission code '{permission_code}' already exists"
+                        )
+                        continue
+
+                    # Get or create group
+                    group = self.group_dao.get_group_by_name(group_name)
+                    if not group:
+                        group = self.group_dao.create_group(group_name, generate_uuid7(), user_id)
+                    
+                    # Create new permission
+                    permission = self.dao.create(permission_code, description, generate_uuid7())
+
+                    # Map permission to group
+                    permission_uuid = self.dao.get_by_id(permission.permission_id).permission_uuid
+                    self.group_dao.add_permissions_to_group(group.group_id, [permission.permission_id], user_id)
+
+                    created_permissions.append({
+                        "permission_uuid": permission.permission_uuid,
+                        "permission_code": permission.permission_code,
+                        "description": permission.description,
+                        "group_name": group_name,
+                        "message": "Permission created and assigned to group successfully"
+                    })
+
+                except ValueError as ve:
+                    failed_entries.append(
+                        f"Row {index + 2} ({row.get('permission_code', 'N/A')}): {str(ve)}"
+                    )
+                except Exception as e:
+                    failed_entries.append(
+                        f"Row {index + 2} ({row.get('permission_code', 'N/A')}): {str(e)}"
+                    )
+            
+            # Update audit data
+            audit_data['entity_id'] = None
+            audit_data['new_data'] = {
+                "total_rows": len(df),
+                "successful_creates": len(created_permissions),
+                "failed_creates": len(failed_entries),
+                "errors": failed_entries[:10]
+            }
+            
+            # Return with summary - REMOVED THE HTTPException RAISE
+            response_data = {
+                "summary": {
+                    "total_rows": len(df),
+                    "successful": len(created_permissions),
+                    "failed": len(failed_entries)
+                },
+                "created_permissions": created_permissions,
+                "failed_entries": failed_entries
+            }
+            
+            # ✅ Just return the response data, don't raise an exception
+            return response_data
+
+        except pd.errors.EmptyDataError:
+            raise HTTPException(
+                status_code=400,
+                detail="Excel file is empty"
+            )
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database error: {str(e)}"
+            )
+        except HTTPException:
+            # ✅ Re-raise HTTPException without catching it
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to process Excel file: {str(e)}"
+            )
+
 
 
     def list_permissions(self):
