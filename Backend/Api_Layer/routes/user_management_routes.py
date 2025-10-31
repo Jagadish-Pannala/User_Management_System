@@ -1,11 +1,12 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request,Query
 from sqlalchemy.orm import Session
-from ..interfaces.user_management import UserBase, UserOut, UserRoleUpdate, UserWithRoleNames, UserBaseIn, UserOut_uuid, UserWithRoleNames_id
+from ..interfaces.user_management import UserOut, UserRoleUpdate, UserBaseIn, UserOut_uuid, UserWithRoleNames_id, PaginatedUserResponse,PaginatedUserWithRolesResponse
 from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
 import pandas as pd
 from io import BytesIO
+from typing import Optional
 
 router = APIRouter()
 
@@ -31,19 +32,25 @@ def count_active_users(
 ):
     return {"active_user_count": user_service.count_active_users()}
 
-@router.get("", response_model=list[UserOut])
+@router.get("", response_model= PaginatedUserResponse)
 def list_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, le=500),
+    search: str = Query(None),
     current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
-    return user_service.list_users()
+    return user_service.list_users(page, limit, search)
 
-@router.get("/roles", response_model=list[UserWithRoleNames])
+@router.get("/roles", response_model=PaginatedUserWithRolesResponse)
 def get_users_with_roles(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, le=100),
+    search: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
-    user_service: UserService = Depends(get_user_service)
+    user_service: UserService = Depends(get_user_service),
 ):
-    return user_service.get_users_with_roles()
+    return user_service.get_users_with_roles(page, limit, search)
 
 @router.get("/id/roles", response_model=list[UserWithRoleNames_id])
 def get_users_with_roles_id(

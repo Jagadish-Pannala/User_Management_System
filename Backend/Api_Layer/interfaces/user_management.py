@@ -10,11 +10,6 @@ class UserBase(BaseModel):
     contact: str
     password: Optional[str] = None
     is_active: bool = True
-    last_login_ip: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-    password_last_updated: Optional[datetime] = None 
-    last_login_at: Optional[datetime] = None 
 
 class UserBaseIn(BaseModel):
     user_uuid: Optional[str] = None 
@@ -56,3 +51,13 @@ class UserWithRoleNames_id(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PaginatedUserResponse(BaseModel):
+    total: int
+    users: List[UserOut]
+
+
+
+class PaginatedUserWithRolesResponse(BaseModel):
+    total: int
+    users: List[UserWithRoleNames]

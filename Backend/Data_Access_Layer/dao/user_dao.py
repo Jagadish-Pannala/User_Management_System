@@ -5,12 +5,15 @@ File: Data_Access_Layer/dao/user_dao.py
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import or_, not_
+from sqlalchemy import or_, not_, distinct
 from ..models import models
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from fastapi import HTTPException
 from datetime import datetime
 import uuid
+from sqlalchemy import func
+from sqlalchemy.orm import load_only
+
 
 
 class UserDAO:
@@ -40,6 +43,31 @@ class UserDAO:
 
     def get_all_users(self) -> List[models.User]:
         return self.db.query(models.User).all()
+    
+    def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
+        query = self.db.query(models.User).options(load_only(
+            models.User.user_id,
+            models.User.user_uuid,
+            models.User.first_name,
+            models.User.last_name,
+            models.User.mail,
+            models.User.contact,
+            models.User.is_active
+        ))
+        if search:
+            search_pattern = f"%{search.lower()}%"
+            query = query.filter(
+                or_(
+                    func.lower(models.User.first_name).like(search_pattern),
+                    func.lower(models.User.last_name).like(search_pattern),
+                    func.lower(models.User.mail).like(search_pattern),
+                    models.User.contact.like(search_pattern)
+                )
+            )
+        total = query.count()
+        users = query.offset((page - 1) * limit).limit(limit).all()
+        return {"total": total, "users": users}
+
 
     def get_all_active_users(self) -> List[models.User]:
         return self.db.query(models.User).filter(
@@ -78,35 +106,81 @@ class UserDAO:
         existing_emails = self.get_users_by_emails(emails)
         return {email: email in existing_emails for email in emails}
 
-    def get_users_with_roles(self) -> List[dict]:
-        results = (
+    def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
+        base_query = (
             self.db.query(
                 models.User.user_id,
                 models.User.user_uuid,
                 models.User.first_name,
                 models.User.last_name,
-                models.User.mail,
-                models.Role.role_name
+                models.User.mail
             )
             .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
             .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+        )
+
+        if search:
+            search_pattern = f"%{search.lower()}%"
+            base_query = base_query.filter(
+                or_(
+                    func.lower(models.User.first_name).like(search_pattern),
+                    func.lower(models.User.last_name).like(search_pattern),
+                    func.lower(models.User.mail).like(search_pattern),
+                    func.lower(models.Role.role_name).like(search_pattern),
+                )
+            )
+
+        # ✅ Count unique users only
+        total = self.db.query(func.count(distinct(models.User.user_id))).select_from(
+            base_query.subquery()
+        ).scalar()
+
+        # ✅ Get unique users for the current page
+        user_subquery = (
+            self.db.query(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail
+            )
+            .distinct(models.User.user_id)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .subquery()
+        )
+
+        # ✅ Fetch roles only for those users in this page
+        role_query = (
+            self.db.query(
+                user_subquery.c.user_id,
+                user_subquery.c.user_uuid,
+                user_subquery.c.first_name,
+                user_subquery.c.last_name,
+                user_subquery.c.mail,
+                models.Role.role_name
+            )
+            .join(models.User_Role, user_subquery.c.user_id == models.User_Role.user_id)
+            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+            .order_by(user_subquery.c.first_name)
             .all()
         )
 
+        # ✅ Combine roles per user
         user_map = {}
-        for user_id, user_uuid, first_name, last_name, mail, role_name in results:
+        for user_id, user_uuid, first_name, last_name, mail, role_name in role_query:
             if user_uuid not in user_map:
                 user_map[user_uuid] = {
-                    "user_id": user_id,
                     "user_uuid": user_uuid,
                     "first_name": first_name,
                     "last_name": last_name,
                     "mail": mail,
-                    "roles": []
+                    "roles": [],
                 }
             user_map[user_uuid]["roles"].append(role_name)
 
-        return list(user_map.values())
+        return {"total": total, "users": list(user_map.values())}
+
 
     # --------------------------
     # USER SEARCH OPERATIONS
