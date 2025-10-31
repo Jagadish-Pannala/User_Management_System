@@ -137,23 +137,26 @@ class UserDAO:
         return list(user_map.values())
 
 
+
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
-        # ✅ Create base query joining roles
+        # ✅ Base query with roles joined
         base_query = (
             self.db.query(
                 models.User.user_id,
                 models.User.user_uuid,
                 models.User.first_name,
                 models.User.last_name,
-                models.User.mail
+                models.User.mail,
+                models.Role.role_name
             )
             .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
             .join(models.Role, models.User_Role.role_id == models.Role.role_id)
         )
 
-        # ✅ Apply search filters dynamically
+        # ✅ Apply case-insensitive search filters
         if search:
-            search_pattern = f"%{search.lower()}%"
+            search = search.strip().lower()
+            search_pattern = f"%{search}%"
             base_query = base_query.filter(
                 or_(
                     func.lower(models.User.first_name).like(search_pattern),
@@ -163,61 +166,70 @@ class UserDAO:
                 )
             )
 
-        # ✅ Count distinct users (avoid duplicates due to join)
-        total = self.db.query(
-            func.count(distinct(models.User.user_id))
-        ).select_from(base_query.subquery()).scalar()
-
-        # ✅ Get paginated distinct users
+        # ✅ Build subquery for unique users (with search applied)
         user_subquery = (
-            self.db.query(
+            base_query
+            .distinct(models.User.user_id)
+            .with_entities(
                 models.User.user_id,
                 models.User.user_uuid,
                 models.User.first_name,
                 models.User.last_name,
                 models.User.mail
             )
-            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
-            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
-            .distinct(models.User.user_id)
             .order_by(models.User.first_name)
-            .offset((page - 1) * limit)
-            .limit(limit)
             .subquery()
         )
 
-        # ✅ Fetch all roles for only users in this page
-        role_query = (
-            self.db.query(
-                user_subquery.c.user_id,
-                user_subquery.c.user_uuid,
-                user_subquery.c.first_name,
-                user_subquery.c.last_name,
-                user_subquery.c.mail,
-                models.Role.role_name
-            )
-            .join(models.User_Role, user_subquery.c.user_id == models.User_Role.user_id)
-            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
-            .order_by(user_subquery.c.first_name)
+        # ✅ Total count of filtered distinct users
+        total = self.db.query(func.count()).select_from(user_subquery).scalar()
+
+        # ✅ Paginated users
+        paginated_users = (
+            self.db.query(user_subquery)
+            .offset((page - 1) * limit)
+            .limit(limit)
             .all()
         )
 
-        # ✅ Combine multiple roles for same user
-        user_map = {}
-        for user_id, user_uuid, first_name, last_name, mail, role_name in role_query:
-            if user_uuid not in user_map:
-                user_map[user_uuid] = {
-                    "user_uuid": user_uuid,
-                    "name": f"{first_name} {last_name}",
-                    "mail": mail,
-                    "roles": [],
-                }
-            user_map[user_uuid]["roles"].append(role_name)
+        user_ids = [u.user_id for u in paginated_users]
+        if not user_ids:
+            return {"total": total, "users": []}
+
+        # ✅ Fetch roles for paginated users only
+        role_query = (
+            self.db.query(
+                models.User.user_id,
+                models.Role.role_name
+            )
+            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
+            .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+            .filter(models.User.user_id.in_(user_ids))
+            .all()
+        )
+
+        # ✅ Map roles to users
+        user_map = {
+            u.user_uuid: {
+                "user_uuid": u.user_uuid,
+                "name": f"{u.first_name} {u.last_name}".strip(),
+                "mail": u.mail,
+                "roles": [],
+            }
+            for u in paginated_users
+        }
+
+        for user_id, role_name in role_query:
+            for u in paginated_users:
+                if u.user_id == user_id:
+                    user_map[u.user_uuid]["roles"].append(role_name)
+                    break
 
         return {
             "total": total,
             "users": list(user_map.values())
         }
+
 
 
 

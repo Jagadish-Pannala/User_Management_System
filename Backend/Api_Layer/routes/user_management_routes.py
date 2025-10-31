@@ -42,7 +42,7 @@ def list_users(
 ):
     return user_service.list_users(page, limit, search)
 
-@router.get("/updated/roles", response_model=PaginatedUserWithRolesResponse)
+@router.get("/roles", response_model=PaginatedUserWithRolesResponse)
 def get_users_with_roles(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
@@ -51,13 +51,6 @@ def get_users_with_roles(
     user_service: UserService = Depends(get_user_service),
 ):
     return user_service.get_users_with_roles(page, limit, search)
-
-@router.get("/roles", response_model=list[UserWithRoleNames])
-def get_users_with_roles(
-    current_user: dict = Depends(get_current_user),
-    user_service: UserService = Depends(get_user_service)
-):
-    return user_service.get_users_with_roles_id()
 
 @router.get("/id/roles", response_model=list[UserWithRoleNames_id])
 def get_users_with_roles_id(
