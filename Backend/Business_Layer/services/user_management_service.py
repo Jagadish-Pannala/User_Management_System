@@ -14,6 +14,7 @@ import pandas as pd
 import re
 import asyncio
 from datetime import datetime
+from typing import Optional
 
  
  
@@ -28,25 +29,17 @@ class UserService:
     def count_active_users(self):
         return self.dao.count_active_users()
 
-    def list_users(self):
-        return self.dao.get_all_users()
+    def list_users(self, page: int, limit: int, search: Optional[str] = None):
+        return self.dao.get_paginated_users(page, limit, search)
 
-    def get_users_with_roles(self):
-        users = self.dao.get_users_with_roles()
-        result = []
-        for user in users:
-            full_name = f"{user['first_name']} {user['last_name']}"
-            role_names = [role for role in user['roles']]
-            result.append({
-                "user_uuid": user['user_uuid'],
-                "name": full_name,
-                "roles": role_names,
-                "mail": user['mail']
-            })
-        return result
+    def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None):
+        users_data = self.dao.get_users_with_roles(page, limit, search)
+
+        return users_data
+    
     
     def get_users_with_roles_id(self):
-        users = self.dao.get_users_with_roles()
+        users = self.dao.get_users_with_roles_id()
         result = []
         for user in users:
             full_name = f"{user['first_name']} {user['last_name']}"

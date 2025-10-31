@@ -5,12 +5,15 @@ File: Data_Access_Layer/dao/user_dao.py
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import or_, not_
+from sqlalchemy import or_, not_, distinct
 from ..models import models
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
 from fastapi import HTTPException
 from datetime import datetime
 import uuid
+from sqlalchemy import func
+from sqlalchemy.orm import load_only
+
 
 
 class UserDAO:
@@ -40,6 +43,45 @@ class UserDAO:
 
     def get_all_users(self) -> List[models.User]:
         return self.db.query(models.User).all()
+    
+    def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
+        base_query = (
+            self.db.query(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail,
+                models.User.contact,
+                models.User.is_active
+            )
+        )
+
+        if search:
+            search = search.strip().lower()
+            search_pattern = f"%{search}%"
+            base_query = base_query.filter(
+                or_(
+                    func.lower(models.User.first_name).like(search_pattern),
+                    func.lower(models.User.last_name).like(search_pattern),
+                    func.lower(models.User.mail).like(search_pattern),
+                    models.User.contact.like(search_pattern)
+                )
+            )
+
+        # ✅ Count efficiently
+        total = self.db.query(func.count(func.distinct(models.User.user_id))).select_from(base_query.subquery()).scalar()
+
+        # ✅ Fetch paginated users
+        users = (
+            base_query
+            .order_by(models.User.first_name)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .all()
+        )
+
+        return {"total": total, "users": users}
 
     def get_all_active_users(self) -> List[models.User]:
         return self.db.query(models.User).filter(
@@ -77,8 +119,8 @@ class UserDAO:
         """
         existing_emails = self.get_users_by_emails(emails)
         return {email: email in existing_emails for email in emails}
-
-    def get_users_with_roles(self) -> List[dict]:
+    
+    def get_users_with_roles_id(self) -> List[dict]:
         results = (
             self.db.query(
                 models.User.user_id,
@@ -107,6 +149,65 @@ class UserDAO:
             user_map[user_uuid]["roles"].append(role_name)
 
         return list(user_map.values())
+
+
+
+    def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
+        # ✅ Step 1: Base query joining users with roles
+        base_query = (
+            self.db.query(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail,
+                func.group_concat(models.Role.role_name).label("roles")
+            )
+            .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
+            .join(models.Role, models.Role.role_id == models.User_Role.role_id)
+            .group_by(models.User.user_id)
+        )
+
+        # ✅ Step 2: Apply search (case-insensitive for name, mail, and role)
+        if search:
+            search = f"%{search.strip().lower()}%"
+            base_query = base_query.having(
+                or_(
+                    func.lower(models.User.first_name).like(search),
+                    func.lower(models.User.last_name).like(search),
+                    func.lower(models.User.mail).like(search),
+                    func.lower(func.group_concat(models.Role.role_name)).like(search),
+                )
+            )
+
+        # ✅ Step 3: Efficient total count
+        total = self.db.query(func.count()).select_from(base_query.subquery()).scalar()
+
+        # ✅ Step 4: Paginate results
+        users = (
+            base_query
+            .order_by(models.User.first_name)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .all()
+        )
+
+        # ✅ Step 5: Transform result
+        result_users = [
+            {
+                "user_uuid": u.user_uuid,
+                "name": f"{u.first_name} {u.last_name}".strip(),
+                "mail": u.mail,
+                "roles": u.roles.split(",") if u.roles else []
+            }
+            for u in users
+        ]
+
+        return {
+            "total": total,
+            "users": result_users
+        }
+
 
     # --------------------------
     # USER SEARCH OPERATIONS
