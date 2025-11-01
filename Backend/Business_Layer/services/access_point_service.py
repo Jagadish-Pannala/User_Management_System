@@ -312,21 +312,7 @@ class AccessPointService:
     def list_modules(self) -> List[str]:
         return self.dao.get_distinct_modules()
 
-    # def update(self, access_id: int, data: AccessPointUpdate):
-    #     update_dict = data.dict(exclude_unset=True)
-    #     updated_ap = self.dao.update_access_point(access_id, **update_dict)
 
-    #     if not updated_ap:
-    #         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
-
-    #     return AccessPointOut(
-    #         access_id=updated_ap.access_id,
-    #         endpoint_path=updated_ap.endpoint_path,
-    #         method=updated_ap.method,
-    #         module=updated_ap.module,
-    #         is_public=updated_ap.is_public,
-    #         permission_id=updated_ap.permission_mappings[0].permission_id if updated_ap.permission_mappings else None
-    #     )
 
     @audit_action_with_request(
     action_type='UPDATE',
@@ -537,6 +523,171 @@ class AccessPointService:
             "access_uuid": access_point.access_uuid,
             "permission_uuid": permission.permission_uuid
         }
+    
+    @audit_action_with_request(
+        action_type='Update',
+        entity_type='AccessPointPermission',
+        capture_old_data=False,
+        capture_new_data=False,
+        description='mapping a permission for an access point'
+    )
+    def map_permission_bulk(self, file: UploadFile, assigned_by: int, **kwargs):
+        audit_data = kwargs.get('audit_data', {})
+        
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only Excel files (.xlsx, .xls) are supported"
+            )
+        
+        # Read file content
+        contents = file.file.read()
+        df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validate columns
+        required_columns = ['access_point_name', 'access_point_method', 'permission_name']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Missing required columns: {', '.join(missing_columns)}"
+            )
+        
+        # Clean data
+        df = df.dropna(subset=required_columns)
+        if df.empty:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid data found in the Excel file"
+            )
+        
+        successful_mappings = []
+        errors = []
+        valid_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
+        
+        # Process with transaction (pseudo-code - adjust to your ORM)
+        try:
+            # Begin transaction
+            for index, row in df.iterrows():
+                access_point_name = str(row['access_point_name']).strip()
+                permission_name = str(row['permission_name']).strip()
+                access_point_method = str(row['access_point_method']).strip().upper()
+                
+                # Validate HTTP method
+                if access_point_method not in valid_methods:
+                    errors.append({
+                        "row": index + 2,
+                        "access_point_name": access_point_name,
+                        "permission_name": permission_name,
+                        "error": f"Invalid HTTP method: {access_point_method}"
+                    })
+                    continue
+                
+                try:
+                    # Get access point
+                    access_point = self.dao.get_access_point_by_path_and_method(
+                        access_point_name, access_point_method
+                    )
+                    if not access_point:
+                        errors.append({
+                            "row": index + 2,
+                            "access_point_name": access_point_name,
+                            "permission_name": permission_name,
+                            "error": "Access point not found"
+                        })
+                        continue
+                    
+                    # ✅ Validate format of permission_code
+                    PERMISSION_CODE_PATTERN = re.compile(r'^[A-Z]+(_[A-Z]+)*$')
+                    if not PERMISSION_CODE_PATTERN.fullmatch(permission_name):
+                        errors.append({
+                            "row": index + 2,
+                            "access_point_name": access_point_name,
+                            "permission_name": permission_name,
+                            "error": "Invalid permission code format"
+                        })
+                        continue
+                    permission = self.permission_dao.get_by_code(permission_name)
+                    if not permission:
+                        errors.append({
+                            "row": index + 2,
+                            "access_point_name": access_point_name,
+                            "permission_name": permission_name,
+                            "error": "Permission not found"
+                        })
+                        continue
+                    
+                    # Check if mapping already exists
+                    existing = self.dao.get_mapping(access_point.access_id)
+                    if existing:
+                        permission_name = self.permission_dao.get_by_id(existing.permission_id).permission_code
+                        errors.append({
+                            "row": index + 2,
+                            "access_point_name": access_point_name,
+                            "permission_name": permission_name,
+                            "existing_permission": permission_name,
+                            "error": "Mapping already exists"
+                        })
+                        continue
+                    
+                    # Create mapping
+                    mapping = self.dao.create_access_permission_mapping(
+                        access_point.access_id, 
+                        permission.permission_id, 
+                        assigned_by=assigned_by
+                    )
+                    
+                    successful_mappings.append({
+                        "row": index + 2,
+                        "access_point_name": access_point_name,
+                        "permission_name": permission_name,
+                        "message": "Permission mapped successfully"
+                    })
+                    
+                    # Invalidate cache
+                    self._invalidate_cache(access_point.method, access_point.endpoint_path)
+                    
+                except Exception as e:
+                    errors.append({
+                        "row": index + 2,
+                        "access_point_name": access_point_name,
+                        "permission_name": permission_name,
+                        "error": str(e)
+                    })
+            
+            # Commit transaction
+            
+        except Exception as e:
+            # Rollback transaction
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Bulk operation failed: {str(e)}"
+            )
+        
+        # Update audit data AFTER the loop
+        audit_data['new_data'] = {
+            "summary": {
+                "total_rows": len(df),
+                "successful_mappings": len(successful_mappings),
+                "failed_mappings": len(errors),
+                "errors": errors[:10]  # Limit to first 10 errors
+            }, 
+            "assigned_by": assigned_by
+        }
+        
+        # Return summary
+        return {
+            "total_rows": len(df),
+            "successful": len(successful_mappings),
+            "failed": len(errors),
+            "successful_mappings": successful_mappings,
+            "errors": errors
+        }
+
+
+
+
 
     def unmap_permission(self, access_id: int):
         success = self.dao.delete_mapping_by_access_id(access_id)

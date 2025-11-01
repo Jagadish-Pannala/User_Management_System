@@ -156,6 +156,13 @@ class AccessPointDAO:
         Return all access points that have no permission mappings.
         """
         return self.db.query(AccessPoint).filter(~AccessPoint.permission_mappings.any()).all()
+    
+    def get_mapping(self, access_id: int) -> Optional[AccessPointPermission]:
+        return (
+            self.db.query(AccessPointPermission)
+            .filter_by(access_id=access_id)
+            .first()
+        )
 
 
     def get_distinct_modules(self) -> List[str]:

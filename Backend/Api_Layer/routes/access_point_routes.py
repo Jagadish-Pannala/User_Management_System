@@ -108,6 +108,14 @@ def map_permission(
 ):
     return service.map_permission(access_uuid, permission_uuid,current_user['user_id'],request=request,current_user=current_user)
 
+@router.post("/access-point-map-permission-bulk")
+def map_permission_bulk(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    service: AccessPointService = Depends(get_access_point_service)
+):
+    return service.map_permission_bulk(file, current_user['user_id'],request=request,current_user=current_user)
 
 @router.delete("/{access_uuid}/unmap-permission/{permission_uuid}")
 def unmap_permission(
