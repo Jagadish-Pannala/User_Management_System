@@ -41,8 +41,6 @@ class JWTMiddleware(BaseHTTPMiddleware):
 
             request.state.user = decoded_token
             print(f"✅ JWT Middleware - User set: {decoded_token.get('name', decoded_token.get('email', 'Unknown'))}")
-            print(f"✅ request.state.user = {request.state.user}")
-
             # Optional: fetch access point cache (SYNCHRONOUS - no await!)
             access_point_cache = get_access_point_from_cache(request.method, request.url.path)
             if access_point_cache:

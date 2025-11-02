@@ -135,11 +135,11 @@ class AccessPointService:
         try:
             # Read file content into BytesIO (THIS IS THE FIX)
             contents = file.file.read()
-            df = pd.read_excel(io.BytesIO(contents))
+            df1 = pd.read_excel(io.BytesIO(contents))
             
             # Validate required columns
             required_columns = ['endpoint_path', 'method', 'module']
-            missing_columns = [col for col in required_columns if col not in df.columns]
+            missing_columns = [col for col in required_columns if col not in df1.columns]
             
             if missing_columns:
                 print(f"Missing columns in Excel: {missing_columns}")
@@ -149,11 +149,11 @@ class AccessPointService:
                 )
             
             # Optional column with default value
-            if 'is_public' not in df.columns:
-                df['is_public'] = False
+            if 'is_public' not in df1.columns:
+                df1['is_public'] = False
             
             # Remove rows with missing required values
-            df = df.dropna(subset=required_columns)
+            df = df1.dropna(subset=required_columns)
             
             if df.empty:
                 raise HTTPException(
@@ -237,7 +237,8 @@ class AccessPointService:
             # Return with summary
             response_data = {
                 "summary": {
-                    "total_rows": len(df),
+                    "total_rows": len(df1),
+                    "missing_data_rows": len(df1) - len(df),
                     "successful": len(created_access_points),
                     "failed": len(errors)
                 },
@@ -245,11 +246,11 @@ class AccessPointService:
                 "errors": errors if errors else []
             }
             
-            if not created_access_points and errors:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=response_data
-                )
+            # if not created_access_points and errors:
+            #     raise HTTPException(
+            #         status_code=status.HTTP_400_BAD_REQUEST,
+            #         detail=response_data
+            #     )
             
             return response_data
             
