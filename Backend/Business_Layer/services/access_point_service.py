@@ -166,7 +166,7 @@ class AccessPointService:
             
             # Process each row
             for index, row in df.iterrows():
-                if bool(row['is_public']) == True and row['is_public'] not in [1,'1', False, 'False']:
+                if bool(row['is_public']) == True or row['is_public'] not in [1,'1', True, 'True']:
                     is_public_value = 0
                 else:
                     is_public_value = 1
