@@ -115,6 +115,18 @@ class AuthDAO:
             models.User_Role, models.User_Role.role_id == models.Role_Permission_Group.role_id
         ).filter(models.User_Role.user_id == user_id).distinct().all()
         return [g[0] for g in result]
+    
+    def get_permission_groups_for_user(self, user_id: int) -> list[str]:
+        result = self.db.query(models.Permission_Group).join(
+            models.Role_Permission_Group,
+            models.Permission_Group.group_id == models.Role_Permission_Group.group_id
+        ).join(
+            models.User_Role,
+            models.Role_Permission_Group.role_id == models.User_Role.role_id
+        ).filter(
+            models.User_Role.user_id == user_id
+        ).distinct().all()
+        return [g.group_name for g in result]
 
     def get_permissions_by_group_ids(self, group_ids: list[int]) -> list[str]:
         if not group_ids:

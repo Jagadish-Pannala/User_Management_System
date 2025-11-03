@@ -33,7 +33,6 @@ class JWTMiddleware(BaseHTTPMiddleware):
             else:
                 decoded_token = validate_jwt_token(token)
 
-            print(f"🔓 Decoded token: {decoded_token}")
             
             if not decoded_token:
                 print("❌ JWT Middleware - validate_jwt_token returned None/False")

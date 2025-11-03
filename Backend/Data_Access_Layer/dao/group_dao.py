@@ -15,6 +15,16 @@ class PermissionGroupDAO:
     def get_group_by_id(self, group_id: int):
         return self.db.query(Permission_Group).filter_by(group_id=group_id).first()
     
+    def get_group_by_permission_code(self, permission_code: str):
+        result = (
+            self.db.query(Permission_Group)
+            .join(Permission_Group_Mapping, Permission_Group.group_id == Permission_Group_Mapping.group_id)
+            .join(Permissions, Permission_Group_Mapping.permission_id == Permissions.permission_id)
+            .filter(Permissions.permission_code == permission_code)
+            .all()
+        )
+        return [group.group_name for group in result]
+
     def get_group_by_uuid(self, group_uuid: str):
         return self.db.query(Permission_Group).filter_by(group_uuid=group_uuid).first()
 

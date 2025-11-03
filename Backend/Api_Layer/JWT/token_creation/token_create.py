@@ -66,11 +66,11 @@ def token_create(token_data: dict, request=None, issuer: Optional[str] = None) -
         "email": token_data["email"],
         "name": token_data["name"],
         "roles": token_data["roles"],
+        "groups": token_data["groups"],
         "permissions": token_data["permissions"],
         "iss": issuer,
         "exp": expire
     }
-    print("Token Payload:", payload)
 
     # Include 'kid' in JWT header
     headers = {

@@ -1,5 +1,6 @@
 # jwt_validator/middleware/permission_utils.py
 from .....Data_Access_Layer.dao.access_point_dao import AccessPointDAO
+from .....Data_Access_Layer.dao.group_dao import PermissionGroupDAO
 from .....Data_Access_Layer.utils.database import get_db_session
 from .....Business_Layer.utils.redis_cache import get_access_point_from_cache, set_access_point_cache
 
@@ -27,6 +28,7 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
         print(f"❌ Cache miss for {cache_key} → querying DB")
         db = db_session or get_db_session()
         access_point_dao = AccessPointDAO(db)
+        group_dao = PermissionGroupDAO(db)
 
         access_point = access_point_dao.get_access_point_by_path_and_method(path, method)
         if not access_point:
@@ -46,14 +48,26 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
         })
 
     # 2️⃣ Public or Super Admin bypass
-    if access_point_info.get("is_public") or "Super Admin" in user.get("roles", []):
+    if access_point_info.get("is_public"):
+        print(f"🔓 Access point is public so skipping permission check")
         return None  # allowed
 
     # 3️⃣ Actual permission check
     user_permissions = set(user.get("permissions", []))
+    user_groups = set(user.get("groups", []))
+    required_group = group_dao.get_group_by_permission_code(required_permissions[0]) if required_permissions else None
+    print(f"Required permissions for access: {required_permissions}")
+    print(f"Groups required for permission: {required_group}")
+    print(f"User's groups: {user_groups}")
     required_permissions_set = set(required_permissions or [])
+    required_groups_set = set(required_group or [])
 
-    if required_permissions_set and not required_permissions_set.intersection(user_permissions):
+    if required_groups_set and not required_groups_set.intersection(user_groups):
         return JSONResponse(status_code=403, content={"detail": "You don't have permission to access this resource"})
+    
+    print(f"Allowed: User groups match required groups, {required_groups_set.intersection(user_groups)}")
+
+    # if required_permissions_set and not required_permissions_set.intersection(user_permissions):
+    #     return JSONResponse(status_code=403, content={"detail": "You don't have permission to access this resource"})
 
     return None  # allowed

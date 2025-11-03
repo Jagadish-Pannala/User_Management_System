@@ -71,6 +71,8 @@ class AuthService:
 
         roles = dao.get_user_roles(user.user_id)
         group_ids = dao.get_permission_group_ids_for_user(user.user_id)
+        permission_groups = dao.get_permission_groups_for_user(user.user_id)
+        print("Permission Groups:", permission_groups)
         permissions = dao.get_permissions_by_group_ids(group_ids)
 
         token_data = {
@@ -79,6 +81,7 @@ class AuthService:
             "name": user.first_name + " " + user.last_name,
             "email": user.mail,
             "roles": roles,
+            "groups": permission_groups,
             "permissions": permissions
         }
         access_token = token_create(token_data, request = request)
@@ -95,10 +98,9 @@ class AuthService:
         }
     
     def handle_microsoft_callback(self, code: str,client_ip, request: Request):
-        print("1. Received code:", code)
  
         token_url = f"https://login.microsoftonline.com/{get_env_var('TENANT_ID')}/oauth2/v2.0/token"
-        print("2. Token URL:", token_url)
+        print("1. Token URL:", token_url)
  
         data = {
             "client_id": get_env_var('CLIENT_ID'),
@@ -111,22 +113,20 @@ class AuthService:
  
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(token_url, data=data, headers=headers)
-        print("3. Token exchange status:", response.status_code)
-        print("4. Token response:", response.text)
  
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Failed to exchange code for token")
  
         token_response = response.json()
         id_token = token_response.get("id_token")
-        print("5. ID Token:", id_token)
+        print("2. ID Token:", id_token)
  
         if not id_token:
             raise HTTPException(status_code=400, detail="ID token not found in response")
  
         # Decode Token
         jwks_url = f"https://login.microsoftonline.com/{get_env_var('TENANT_ID')}/discovery/v2.0/keys"
-        print("6. JWKS URL:", jwks_url)
+        print("3. JWKS URL:", jwks_url)
  
         jwk_client = PyJWKClient(jwks_url)
         signing_key = jwk_client.get_signing_key_from_jwt(id_token)
@@ -139,12 +139,11 @@ class AuthService:
                 audience=get_env_var('CLIENT_ID'),
                 options={"verify_exp": True}
             )
-            print("7. Decoded payload:", payload)
         except jwt.PyJWTError as e:
             raise HTTPException(status_code=403, detail=f"Token verification failed: {str(e)}")
  
         email = payload.get("email") or payload.get("preferred_username")
-        print("8. Email from token:", email)
+        print("4. Email from token:", email)
  
         if not email:
             raise HTTPException(status_code=400, detail="Email not found in token")
@@ -156,6 +155,8 @@ class AuthService:
         
         roles = dao.get_user_roles(user.user_id)
         group_ids = dao.get_permission_group_ids_for_user(user.user_id)
+        groups = dao.get_permission_groups_for_user(user.user_id)
+        print(" 5. Permission Groups:", groups)
         permissions = dao.get_permissions_by_group_ids(group_ids)
  
         token_data = {
@@ -164,6 +165,7 @@ class AuthService:
             "name": user.first_name + " " + user.last_name,
             "email": user.mail,
             "roles": roles,
+            "groups": groups,
             "permissions": permissions
         }
  
