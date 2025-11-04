@@ -23,6 +23,7 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
         print(f"✅ Cache hit for {cache_key}")
         access_point_info = cached_data.get("access_point")
         required_permissions = cached_data.get("required_permissions", [])
+        print(f"🔐 Required permissions from cache: {required_permissions}")
     else:
         print(f"❌ Cache miss for {cache_key} → querying DB")
         db = db_session or get_db_session()
@@ -47,10 +48,14 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
 
     # 2️⃣ Public or Super Admin bypass
     if access_point_info.get("is_public") or "Super Admin" in user.get("roles", []):
+        print("Skipping permission check: Public access point or Super Admin user")
         return None  # allowed
 
     # 3️⃣ Actual permission check
     user_permissions = set(user.get("permissions", []))
+    print(f"access point id: {access_point_info.get('access_id')}")
+    print(f"🔐 User permissions: {user_permissions}")
+    print(f"🔑 Required permissions: {required_permissions}")
     required_permissions_set = set(required_permissions or [])
 
     if required_permissions_set and not required_permissions_set.intersection(user_permissions):
