@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI
+from fastapi import FastAPI,Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from .Api_Layer.JWT.jwt_validator.middleware.jwt_middleware import JWTMiddleware
@@ -11,6 +11,16 @@ from .Api_Layer.JWT.openid_config import openid_endpoint
 from .Api_Layer.JWT.jwt_validator.middleware.db_session_middleware import DBSessionMiddleware
 
 from .config.env_loader import get_env_var
+
+import time
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -40,6 +50,32 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
     max_age=3600,
 )
+
+@app.middleware("http")
+async def add_timing_middleware(request: Request, call_next):
+    t_start = time.time()
+    path = request.url.path
+    method = request.method
+    
+    logger.info(f"🚀 REQUEST START: {method} {path}")
+    
+    response = await call_next(request)
+    
+    t_end = time.time()
+    elapsed = (t_end - t_start) * 1000
+    
+    # Add header for debugging
+    response.headers["X-Response-Time"] = f"{elapsed:.2f}ms"
+    
+    logger.info(f"🏁 REQUEST END: {method} {path} - {elapsed:.2f}ms - Status: {response.status_code}")
+    
+    if elapsed > 1000:
+        logger.error(f"🔴 VERY SLOW REQUEST: {method} {path} took {elapsed:.2f}ms")
+    elif elapsed > 500:
+        logger.warning(f"🟠 SLOW REQUEST: {method} {path} took {elapsed:.2f}ms")
+    
+    return response
+
 
 def custom_openapi():
     if app.openapi_schema:
