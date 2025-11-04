@@ -116,4 +116,3 @@ app.include_router(access_point_routes.router, prefix="/admin/access-points", ta
 @app.get("/")
 def read_root():
     return {"status": "User Management System API is running"}
-

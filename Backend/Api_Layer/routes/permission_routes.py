@@ -23,7 +23,6 @@ def get_permission_service(db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[PermissionOut])
 def list_permissions(
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.list_permissions()
@@ -31,7 +30,6 @@ def list_permissions(
 
 @router.get("/unmapped", response_model=List[PermissionOut])
 def get_unmapped_permissions(
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.list_unmapped_permissions()
@@ -40,7 +38,6 @@ def get_unmapped_permissions(
 @router.get("/{permission_uuid}", response_model=PermissionOut)
 def get_permission(
     permission_uuid: str,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.get_permission(permission_uuid)
@@ -120,7 +117,6 @@ def delete_permission(
 @router.delete("/cascading/{permission_uuid}")
 def delete_permission_cascade(
     permission_uuid: str,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     service.delete_permission_cascade(permission_uuid)
@@ -131,7 +127,6 @@ def delete_permission_cascade(
 def update_permission_group(
     permission_uuid: str,
     payload: PermissionGroupUpdate,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     service.reassign_group(permission_uuid, payload.group_uuid)

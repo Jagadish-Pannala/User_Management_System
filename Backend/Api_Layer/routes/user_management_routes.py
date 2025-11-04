@@ -24,14 +24,12 @@ def admin_home(current_user: dict = Depends(get_current_user)):
 
 @router.get("/count")
 def count_users(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return {"user_count": user_service.count_users()}
 
 @router.get("/active-count")
 def count_active_users(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return {"active_user_count": user_service.count_active_users()}
@@ -41,7 +39,6 @@ def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=500),
     search: str = Query(None),
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     t_start = time.time()
@@ -69,14 +66,12 @@ def get_users_with_roles(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     search: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
     return user_service.get_users_with_roles(page, limit, search)
 
 @router.get("/id/roles", response_model=list[UserWithRoleNames_id])
 def get_users_with_roles_id(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_users_with_roles_id()
@@ -84,7 +79,6 @@ def get_users_with_roles_id(
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     user = user_service.get_user(user_id)
@@ -280,7 +274,6 @@ def update_user_roles_uuid(
 @router.get("/{user_id}/roles")
 def get_user_roles(
     user_id: int,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -291,7 +284,6 @@ def get_user_roles(
 @router.get("/uuid/{user_uuid}/roles")
 def get_user_roles_uuid(
     user_uuid: str,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:

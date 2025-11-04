@@ -21,8 +21,7 @@ def admin_home(current_user: dict = Depends(get_current_user)):
 
 @router.get("", response_model=List[RoleOut])
 def list_roles(
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.list_roles()
 
@@ -30,8 +29,7 @@ def list_roles(
 @router.get("/uuid/{role_uuid}", response_model=RoleOut)
 def get_role_by_uuid(
     role_uuid: str,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.get_role_by_uuid(role_uuid)
 
@@ -39,8 +37,8 @@ def get_role_by_uuid(
 def create_role(
     role: RoleBase,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.create_role(role,current_user=current_user,
             request=request)
@@ -51,8 +49,8 @@ def update_role_by_uuid(
     role_uuid: str,
     role: RoleBase,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.update_role_by_uuid(role_uuid, role,current_user=current_user,
             request=request)
@@ -62,8 +60,8 @@ def update_role_by_uuid(
 def delete_role_by_uuid(
     role_uuid: str,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.delete_role_by_uuid(role_uuid,current_user=current_user,
             request=request)
@@ -73,8 +71,7 @@ def delete_role_by_uuid(
 @router.get("/uuid/{role_uuid}/permissions")
 def get_permissions_by_role(
     role_uuid: str,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.get_permissions_by_role_uuid(role_uuid)
 
@@ -82,8 +79,7 @@ def get_permissions_by_role(
 @router.get("/uuid/{role_uuid}/groups",response_model=List[Group])
 def get_permission_groups_by_role(
     role_uuid: str,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.get_permission_groups_by_role_uuid(role_uuid)
 
@@ -91,8 +87,7 @@ def get_permission_groups_by_role(
 def update_permission_groups_for_role(
     role_id: int,
     payload: RoleGroupRequest,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.update_permission_groups_for_role(role_id, payload.group_ids)
 
@@ -101,8 +96,8 @@ def update_permission_groups_for_role(
     role_uuid: str,
     payload: RoleGroupRequest,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+     current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.update_permission_groups_for_role_uuid(role_uuid, payload.group_uuids,current_user=current_user,
             request=request)
@@ -112,8 +107,8 @@ def add_permission_groups_to_role(
     role_uuid: str,
     payload: RoleGroupRequest,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.add_permission_groups_to_role(role_uuid, payload.group_uuids,current_user['user_id'],request=request,current_user=current_user)
 
@@ -122,8 +117,8 @@ def remove_permission_group_from_role(
     role_uuid: str,
     group_uuid: str,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.remove_permission_group_from_role(role_uuid, group_uuid,current_user=current_user,
             request=request)
@@ -133,15 +128,14 @@ def remove_permission_groups_to_role(
     role_uuid: str,
     payload: RoleGroupRequest,
     request: Request,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: RoleService = Depends(get_role_service)
 ):
     return service.remove_permission_groups_to_role(role_uuid, payload.group_uuids,current_user=current_user,request=request)
 
 @router.get("/{role_uuid}/available-groups",response_model=List[Group])
 def get_unassigned_permission_groups_for_role(
     role_uuid: str,
-    service: RoleService = Depends(get_role_service),
-    current_user: dict = Depends(get_current_user)
+    service: RoleService = Depends(get_role_service)
 ):
     return service.get_unassigned_permission_groups(role_uuid)

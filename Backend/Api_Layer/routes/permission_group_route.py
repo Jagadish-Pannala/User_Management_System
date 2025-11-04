@@ -17,8 +17,7 @@ def get_permission_group_service(db: Session = Depends(get_db)):
 
 @router.get("/permission-groups/unmapped", response_model=List[GroupOut])
 def get_unmapped_groups(
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     return service.list_unmapped_groups()
 
@@ -31,8 +30,7 @@ def admin_home():
 @router.get("", response_model=List[GroupOut])
 def list_groups(
     keyword: str = Query(default="", description="Search keyword"),
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     if keyword:
         return service.search_groups(keyword)
@@ -42,8 +40,7 @@ def list_groups(
 @router.get("/{group_uuid}", response_model=GroupOut)
 def get_group(
     group_uuid: str,
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     group = service.get_group(group_uuid)
     if not group:
@@ -55,8 +52,9 @@ def get_group(
 def create_group(
     group: GroupIn,
     request: Request,
+     current_user: dict = Depends(get_current_user),
     service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+   
 ):
     try:
         return service.create_group(group.group_name,current_user['user_id'],request=request,current_user=current_user)
@@ -69,8 +67,8 @@ def update_group(
     group_uuid: str,
     group: GroupIn,
     request: Request,
+    current_user: dict = Depends(get_current_user),
     service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
 ):
     updated = service.update_group(group_uuid, group.group_name,request=request,current_user=current_user)
     if not updated:
@@ -83,8 +81,8 @@ def delete_group(
     group_uuid: str,
     request: Request,
     cascade: bool = Query(default=False, description="Delete group and its mappings"),
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     deleted = service.delete_group_cascade(group_uuid) if cascade else service.delete_group(group_uuid,request=request,current_user=current_user)
     if not deleted:
@@ -95,7 +93,6 @@ def delete_group(
 def get_permissions_in_group(
     group_uuid: str,
     service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
 ):
     group = service.get_group(group_uuid)
     if not group:
@@ -111,8 +108,8 @@ def add_permissions_to_group(
     group_uuid: str,
     permission_uuids: List[str],
     request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     try:
         return service.add_permissions_to_group(group_uuid, permission_uuids,current_user['user_id'],request=request,current_user=current_user)
@@ -127,8 +124,8 @@ def remove_permissions_from_group(
     group_uuid: str,
     permission_uuids: List[str],  # query param or body
     request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     removed = service.remove_permissions_from_group(group_uuid, permission_uuids,request=request,current_user=current_user)
     if not removed:
@@ -139,8 +136,7 @@ def remove_permissions_from_group(
 @router.get("/{group_uuid}/unmapped-permissions", response_model=List[PermissionOut])
 def get_unmapped_permissions_for_group(
     group_uuid: str,
-    service: PermissionGroupService = Depends(get_permission_group_service),
-    current_user: dict = Depends(get_current_user)
+    service: PermissionGroupService = Depends(get_permission_group_service)
 ):
     group = service.get_group(group_uuid)
     if not group:

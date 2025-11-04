@@ -62,7 +62,6 @@ def bulk_create_ap(
 
 @router.get("/", response_model=List[AccessPointOut])
 def list_aps(
-    _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
     return service.list()
@@ -71,7 +70,6 @@ def list_aps(
 @router.get("/{access_uuid}", response_model=AccessPointOut)
 def get_ap(
     access_uuid: str,
-    _: dict = Depends(get_current_user),
     service: AccessPointService = Depends(get_access_point_service)
 ):
     return service.get(access_uuid)
