@@ -18,13 +18,14 @@ app = FastAPI(title="User Management System")
 
 FRONTEND_URL = get_env_var("FRONTEND_URL")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=[FRONTEND_URL, "http://localhost:5173"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 app.add_middleware(OptimizedPermissionMiddleware)
 app.add_middleware(JWTMiddleware)
 app.add_middleware(DBSessionMiddleware)
@@ -36,6 +37,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
+    max_age=3600,
 )
 
 def custom_openapi():

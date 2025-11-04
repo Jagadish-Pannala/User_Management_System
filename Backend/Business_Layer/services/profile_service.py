@@ -24,13 +24,10 @@ class ProfileService(BaseService):
             "last_name": user.last_name,
             "email": user.mail,
             "contact": user.contact,
-            "is_active": user.is_active,
-            "can_edit": "EDIT_OWN_PROFILE" in current_user.get("permissions", [])
+            "is_active": user.is_active
         }
 
     def update_profile(self, profile: EditProfile, current_user: dict):
-        if "EDIT_OWN_PROFILE" not in current_user.get("permissions", []):
-            raise HTTPException(status_code=403, detail="You don't have permission to edit your profile")
 
         user = self.dao.get_user_by_email(current_user["email"])
         if not user:
