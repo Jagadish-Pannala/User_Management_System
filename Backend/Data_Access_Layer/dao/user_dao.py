@@ -70,7 +70,7 @@ class UserDAO:
             )
 
         # ✅ Count efficiently
-        total = self.db.query(func.count(func.distinct(models.User.user_id))).select_from(base_query.subquery()).scalar()
+        total = base_query.count()
 
         # ✅ Fetch paginated users
         users = (
@@ -153,8 +153,8 @@ class UserDAO:
 
 
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None) -> Dict:
-        # ✅ Step 1: Base query joining users with roles
-        base_query = (
+        # ✅ Build aggregated user-roles subquery once
+        user_roles_sq = (
             self.db.query(
                 models.User.user_id,
                 models.User.user_uuid,
@@ -165,34 +165,44 @@ class UserDAO:
             )
             .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
             .join(models.Role, models.Role.role_id == models.User_Role.role_id)
-            .group_by(models.User.user_id)
+            .group_by(
+                models.User.user_id,
+                models.User.user_uuid,
+                models.User.first_name,
+                models.User.last_name,
+                models.User.mail
+            )
+            .subquery()
         )
-
-        # ✅ Step 2: Apply search (case-insensitive for name, mail, and role)
+        
+        # ✅ Query from subquery (reusable for both count and data fetch)
+        main_query = self.db.query(user_roles_sq)
+        
+        # ✅ Apply search filter once
         if search:
-            search = f"%{search.strip().lower()}%"
-            base_query = base_query.having(
+            search_pattern = f"%{search.strip().lower()}%"
+            main_query = main_query.filter(
                 or_(
-                    func.lower(models.User.first_name).like(search),
-                    func.lower(models.User.last_name).like(search),
-                    func.lower(models.User.mail).like(search),
-                    func.lower(func.group_concat(models.Role.role_name)).like(search),
+                    func.lower(user_roles_sq.c.first_name).like(search_pattern),
+                    func.lower(user_roles_sq.c.last_name).like(search_pattern),
+                    func.lower(user_roles_sq.c.mail).like(search_pattern),
+                    func.lower(user_roles_sq.c.roles).like(search_pattern),
                 )
             )
-
-        # ✅ Step 3: Efficient total count
-        total = self.db.query(func.count()).select_from(base_query.subquery()).scalar()
-
-        # ✅ Step 4: Paginate results
+        
+        # ✅ Efficient count (no nested subquery needed)
+        total = main_query.count()
+        
+        # ✅ Paginate from the same filtered query
         users = (
-            base_query
-            .order_by(models.User.first_name)
+            main_query
+            .order_by(user_roles_sq.c.first_name)
             .offset((page - 1) * limit)
             .limit(limit)
             .all()
         )
-
-        # ✅ Step 5: Transform result
+        
+        # ✅ Transform result
         result_users = [
             {
                 "user_uuid": u.user_uuid,
@@ -202,7 +212,7 @@ class UserDAO:
             }
             for u in users
         ]
-
+        
         return {
             "total": total,
             "users": result_users
