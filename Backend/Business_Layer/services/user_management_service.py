@@ -15,8 +15,10 @@ import re
 import asyncio
 from datetime import datetime
 from typing import Optional
+import time
+import logging
 
- 
+logger = logging.getLogger(__name__)
  
 class UserService:
     def __init__(self, db: Session):
@@ -30,7 +32,16 @@ class UserService:
         return self.dao.count_active_users()
 
     def list_users(self, page: int, limit: int, search: Optional[str] = None):
-        return self.dao.get_paginated_users(page, limit, search)
+        t_start = time.time()
+        print(f"  🟢 START service.list_users")
+        
+        result = self.dao.get_paginated_users(page, limit, search)
+        
+        t_end = time.time()
+        elapsed = (t_end - t_start) * 1000
+        print(f"  ✅ END service.list_users - {elapsed:.2f}ms")
+        
+        return result
 
     def get_users_with_roles(self, page: int, limit: int, search: Optional[str] = None):
         users_data = self.dao.get_users_with_roles(page, limit, search)

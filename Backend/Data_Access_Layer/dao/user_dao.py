@@ -14,7 +14,10 @@ import uuid
 from sqlalchemy import func
 from sqlalchemy.orm import load_only
 
+import time
+import logging
 
+logger = logging.getLogger(__name__)
 
 class UserDAO:
     """Data Access Object for User Profile operations"""
@@ -45,6 +48,12 @@ class UserDAO:
         return self.db.query(models.User).all()
     
     def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
+        timings = {}
+        t_start = time.time()
+        print(f"    🟡 START dao.get_paginated_users")
+        
+        # Build base query
+        t1 = time.time()
         base_query = (
             self.db.query(
                 models.User.user_id,
@@ -56,8 +65,11 @@ class UserDAO:
                 models.User.is_active
             )
         )
-
+        timings['query_init'] = (time.time() - t1) * 1000
+        
+        # Apply search filter
         if search:
+            t2 = time.time()
             search = search.strip().lower()
             search_pattern = f"%{search}%"
             base_query = base_query.filter(
@@ -68,11 +80,16 @@ class UserDAO:
                     models.User.contact.like(search_pattern)
                 )
             )
-
-        # ✅ Count efficiently
+            timings['search_filter'] = (time.time() - t2) * 1000
+        
+        # Count query
+        t3 = time.time()
         total = base_query.count()
-
-        # ✅ Fetch paginated users
+        timings['count_query'] = (time.time() - t3) * 1000
+        print(f"      ⏱️  Count query: {timings['count_query']:.2f}ms (total={total})")
+        
+        # Data fetch query
+        t4 = time.time()
         users = (
             base_query
             .order_by(models.User.first_name)
@@ -80,8 +97,24 @@ class UserDAO:
             .limit(limit)
             .all()
         )
-
-        return {"total": total, "users": users}
+        timings['data_query'] = (time.time() - t4) * 1000
+        print(f"      ⏱️  Data query: {timings['data_query']:.2f}ms (rows={len(users)})")
+        
+        # Build response
+        t5 = time.time()
+        result = {"total": total, "users": users}
+        timings['response_build'] = (time.time() - t5) * 1000
+        
+        # Total time
+        timings['total'] = (time.time() - t_start) * 1000
+        
+        print(f"    ✅ END dao.get_paginated_users - {timings['total']:.2f}ms")
+        print(f"    📊 Breakdown: {timings}")
+        
+        if timings['total'] > 100:
+            print(f"    ⚠️ SLOW DAO: get_paginated_users took {timings['total']:.2f}ms")
+        
+        return result
 
     def get_all_active_users(self) -> List[models.User]:
         return self.db.query(models.User).filter(

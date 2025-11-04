@@ -7,8 +7,12 @@ from ...Data_Access_Layer.utils.dependency import get_db
 import pandas as pd
 from io import BytesIO
 from typing import Optional
+import time
+import logging
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 # Injecting the service with DB session
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
@@ -32,7 +36,7 @@ def count_active_users(
 ):
     return {"active_user_count": user_service.count_active_users()}
 
-@router.get("", response_model= PaginatedUserResponse)
+@router.get("", response_model=PaginatedUserResponse)
 def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=500),
@@ -40,7 +44,25 @@ def list_users(
     current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
-    return user_service.list_users(page, limit, search)
+    t_start = time.time()
+    print(f"🔵 START list_users endpoint - page={page}, limit={limit}, search={search}")
+    
+    try:
+        result = user_service.list_users(page, limit, search)
+        
+        t_end = time.time()
+        elapsed = (t_end - t_start) * 1000
+        print(f"✅ END list_users endpoint - {elapsed:.2f}ms")
+        
+        if elapsed > 500:
+            print(f"⚠️ SLOW ENDPOINT: list_users took {elapsed:.2f}ms")
+        
+        return result
+    except Exception as e:
+        t_end = time.time()
+        elapsed = (t_end - t_start) * 1000
+        print(f"❌ ERROR in list_users endpoint after {elapsed:.2f}ms: {str(e)}")
+        raise
 
 @router.get("/roles", response_model=PaginatedUserWithRolesResponse)
 def get_users_with_roles(
