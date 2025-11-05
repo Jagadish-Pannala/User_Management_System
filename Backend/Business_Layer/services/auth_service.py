@@ -139,7 +139,7 @@ class AuthService:
                 audience=get_env_var('CLIENT_ID'),
                 options={"verify_exp": True}
             )
-            print("7. Decoded payload:", payload)
+            # print("7. Decoded payload:", payload)
         except jwt.PyJWTError as e:
             raise HTTPException(status_code=403, detail=f"Token verification failed: {str(e)}")
  
