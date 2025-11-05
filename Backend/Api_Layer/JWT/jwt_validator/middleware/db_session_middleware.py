@@ -2,9 +2,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
-
 from .....Data_Access_Layer.utils.database import set_db_session, remove_db_session
-
+import time
 
 class DBSessionMiddleware(BaseHTTPMiddleware):
     """
@@ -13,6 +12,7 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
+        t_start = time.time()  # Start timing
         print("🟢 DB Middleware - ENTERING")
 
         db = None
@@ -45,4 +45,7 @@ class DBSessionMiddleware(BaseHTTPMiddleware):
         finally:
             # Always remove DB session after request completes
             remove_db_session()
+            t_end = time.time()  # End timing
+            elapsed = (t_end - t_start) * 1000
+            print(f"⏱ DB Middleware: {elapsed:.2f}ms")
             print("🟢 DB Middleware - Session removed and EXITING")

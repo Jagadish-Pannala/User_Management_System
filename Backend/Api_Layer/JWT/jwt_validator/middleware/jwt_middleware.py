@@ -6,11 +6,12 @@ from ..auth.jwt_validator import validate_jwt_token
 from Backend.Business_Layer.utils.redis_cache import get_access_point_from_cache
 import inspect
 import traceback
+import time
 
 class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         print("JWT Middleware - ENTERING")
-
+        t_start = time.time()
         public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
         if request.method == "OPTIONS" or any(request.url.path.startswith(p) for p in public_paths):
             print(f"JWT Middleware - Skipping: {request.url.path}")
@@ -48,6 +49,9 @@ class JWTMiddleware(BaseHTTPMiddleware):
                 print("JWT Middleware - Access point cache found")
 
             response = await call_next(request)
+            t_end = time.time()
+            elapsed = (t_end - t_start) * 1000
+            print(f"⏱ JWT Middleware: {elapsed:.2f}ms")
             print("JWT Middleware - EXITING")
             return response
 
