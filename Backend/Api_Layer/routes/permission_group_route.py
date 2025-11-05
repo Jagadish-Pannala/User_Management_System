@@ -1,95 +1,136 @@
-from fastapi import APIRouter, Depends, HTTPException, Query,Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import List
-from ..interfaces.permissiongroup import GroupBase, GroupOut, PermissionInGroupwithId,GroupIn
+
+from ..interfaces.permissiongroup import (
+    GroupBase,
+    GroupOut,
+    PermissionInGroupwithId,
+    GroupIn
+)
 from ...Business_Layer.services.permission_group_service import PermissionGroupService
 from ...Business_Layer.utils.permission_check import permission_required
-from ...Data_Access_Layer.utils.dependency import get_db
-from sqlalchemy.orm import Session
-from ..interfaces.permission_management import  PermissionOut
+from ..interfaces.permission_management import PermissionOut
 
 router = APIRouter()
 
-# Dependency injector for PermissionGroupService
-def get_permission_group_service(db: Session = Depends(get_db)):
-    return PermissionGroupService(db)
+
+# ✅ Inject service using middleware DB session
+def get_permission_group_service(request: Request) -> PermissionGroupService:
+    return PermissionGroupService(request.state.db)
 
 
+# -------------------------------------------------------
+# Unmapped groups
+# -------------------------------------------------------
 @router.get("/permission-groups/unmapped", response_model=List[GroupOut])
-def get_unmapped_groups(
-    service: PermissionGroupService = Depends(get_permission_group_service),
-):
+def get_unmapped_groups(request: Request):
+    service = PermissionGroupService(request.state.db)
     return service.list_unmapped_groups()
 
 
+# -------------------------------------------------------
+# Home
+# -------------------------------------------------------
 @router.get("/", dependencies=[Depends(permission_required)])
 def admin_home():
     return {"message": "Group Management Route"}
 
 
+# -------------------------------------------------------
+# List groups
+# -------------------------------------------------------
 @router.get("", response_model=List[GroupOut])
 def list_groups(
-    keyword: str = Query(default="", description="Search keyword"),
-    service: PermissionGroupService = Depends(get_permission_group_service)
+    request: Request,
+    keyword: str = Query(default="", description="Search keyword")
 ):
+    service = PermissionGroupService(request.state.db)
+    
     if keyword:
         return service.search_groups(keyword)
+    
     return service.list_groups()
 
 
+# -------------------------------------------------------
+# Get group by UUID
+# -------------------------------------------------------
 @router.get("/{group_uuid}", response_model=GroupOut)
-def get_group(
-    group_uuid: str,
-    service: PermissionGroupService = Depends(get_permission_group_service)
-):
+def get_group(group_uuid: str, request: Request):
+    service = PermissionGroupService(request.state.db)
     group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     return group
 
 
+# -------------------------------------------------------
+# Create group
+# -------------------------------------------------------
 @router.post("", response_model=GroupOut, status_code=201)
-def create_group(
-    group: GroupIn,
-    request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service)
-):
-    try:
-        current_user = request.state.user
-        return service.create_group(group.group_name,current_user['user_id'],request=request,current_user=current_user)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+def create_group(group: GroupIn, request: Request):
+    service = PermissionGroupService(request.state.db)
+    current_user = request.state.user
+
+    return service.create_group(
+        group.group_name,
+        current_user['user_id'],
+        request=request,
+        current_user=current_user
+    )
 
 
+# -------------------------------------------------------
+# Update group
+# -------------------------------------------------------
 @router.put("/{group_uuid}", response_model=GroupOut)
-def update_group(
-    group_uuid: str,
-    group: GroupIn,
-    request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service),
-):
-    updated = service.update_group(group_uuid, group.group_name,request=request,current_user=request.state.user)
+def update_group(group_uuid: str, group: GroupIn, request: Request):
+    service = PermissionGroupService(request.state.db)
+
+    updated = service.update_group(
+        group_uuid,
+        group.group_name,
+        request=request,
+        current_user=request.state.user
+    )
+
     if not updated:
         raise HTTPException(status_code=404, detail="Group not found")
+
     return updated
 
 
+# -------------------------------------------------------
+# Delete group (with optional cascade)
+# -------------------------------------------------------
 @router.delete("/{group_uuid}", status_code=204)
 def delete_group(
     group_uuid: str,
     request: Request,
-    cascade: bool = Query(default=False, description="Delete group and its mappings"),
-    service: PermissionGroupService = Depends(get_permission_group_service)
+    cascade: bool = Query(default=False, description="Delete group and its mappings")
 ):
-    deleted = service.delete_group_cascade(group_uuid) if cascade else service.delete_group(group_uuid,request=request,current_user=request.state.user)
+    service = PermissionGroupService(request.state.db)
+
+    if cascade:
+        deleted = service.delete_group_cascade(group_uuid)
+    else:
+        deleted = service.delete_group(
+            group_uuid,
+            request=request,
+            current_user=request.state.user
+        )
+
     if not deleted:
         raise HTTPException(status_code=404, detail="Group not found")
 
 
+# -------------------------------------------------------
+# Permissions inside group
+# -------------------------------------------------------
 @router.get("/{group_uuid}/permissions", response_model=List[PermissionInGroupwithId])
-def get_permissions_in_group(
-    group_uuid: str,
-    service: PermissionGroupService = Depends(get_permission_group_service)
-):
+def get_permissions_in_group(group_uuid: str, request: Request):
+    service = PermissionGroupService(request.state.db)
+
     group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Permission group not found")
@@ -97,45 +138,60 @@ def get_permissions_in_group(
     return service.list_permissions_in_group(group_uuid)
 
 
-
-
+# -------------------------------------------------------
+# Add permissions to group
+# -------------------------------------------------------
 @router.post("/{group_uuid}/permissions", response_model=List[PermissionOut])
 def add_permissions_to_group(
     group_uuid: str,
     permission_uuids: List[str],
-    request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service),
+    request: Request
 ):
-    try:
-        current_user = request.state.user
-        return service.add_permissions_to_group(group_uuid, permission_uuids,current_user['user_id'],request=request,current_user=current_user)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    service = PermissionGroupService(request.state.db)
+    current_user = request.state.user
+
+    return service.add_permissions_to_group(
+        group_uuid,
+        permission_uuids,
+        current_user['user_id'],
+        request=request,
+        current_user=current_user
+    )
 
 
-
-
+# -------------------------------------------------------
+# Remove permissions from group
+# -------------------------------------------------------
 @router.delete("/{group_uuid}/permissions", status_code=200)
 def remove_permissions_from_group(
     group_uuid: str,
-    permission_uuids: List[str],  # query param or body
-    request: Request,
-    service: PermissionGroupService = Depends(get_permission_group_service),
+    permission_uuids: List[str],
+    request: Request
 ):
-    removed = service.remove_permissions_from_group(group_uuid, permission_uuids,request=request,current_user=request.state.user)
+    service = PermissionGroupService(request.state.db)
+
+    removed = service.remove_permissions_from_group(
+        group_uuid,
+        permission_uuids,
+        request=request,
+        current_user=request.state.user
+    )
+
     if not removed:
         raise HTTPException(status_code=404, detail="No matching permission mappings found.")
-    
+
     return {"message": "Permissions removed successfully"}
 
+
+# -------------------------------------------------------
+# Unmapped permissions for a group
+# -------------------------------------------------------
 @router.get("/{group_uuid}/unmapped-permissions", response_model=List[PermissionOut])
-def get_unmapped_permissions_for_group(
-    group_uuid: str,
-    service: PermissionGroupService = Depends(get_permission_group_service)
-):
+def get_unmapped_permissions_for_group(group_uuid: str, request: Request):
+    service = PermissionGroupService(request.state.db)
+
     group = service.get_group(group_uuid)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
- 
-    return service.get_unmapped_permissions(group.group_id)
 
+    return service.get_unmapped_permissions(group.group_id)
