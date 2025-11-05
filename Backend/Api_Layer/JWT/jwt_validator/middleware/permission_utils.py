@@ -54,7 +54,7 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
     # 3️⃣ Actual permission check
     user_permissions = set(user.get("permissions", []))
     print(f"access point id: {access_point_info.get('access_id')}")
-    print(f"🔐 User permissions: {user_permissions}")
+    # print(f"🔐 User permissions: {user_permissions}")
     print(f"🔑 Required permissions: {required_permissions}")
     required_permissions_set = set(required_permissions or [])
 
