@@ -51,7 +51,7 @@ async def permission_check_endpoint(request: Request, data: PermissionCheck):
             )
         
         token_data = request.state.user
-        print(f"👤 User data: {token_data}")
+        # print(f"👤 User data: {token_data}")
         
         # Get DB session if available
         db = getattr(request.state, "db", None)
