@@ -1,14 +1,18 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import exists
+from sqlalchemy import exists,select
 from ..models import models
 from ...Api_Layer.interfaces.role_mangement import RoleBase
 from fastapi import HTTPException
 from uuid import UUID
 from datetime import datetime
+from functools import lru_cache
+
 
 
 def get_all_roles(db: Session):
-    return db.query(models.Role).all()
+    stmt = select(models.Role.role_id,models.Role.role_uuid, models.Role.role_name).order_by(models.Role.role_id)
+    result = db.execute(stmt).all()
+    return result
 
 
 def get_role(db: Session, role_id: int):
