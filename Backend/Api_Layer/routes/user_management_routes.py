@@ -1,7 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request,Query
 from sqlalchemy.orm import Session
-from ..interfaces.user_management import UserOut, UserRoleUpdate, UserBaseIn, UserOut_uuid, UserWithRoleNames_id, PaginatedUserResponse,PaginatedUserWithRolesResponse,UserWithRoleNames
-from ..JWT.jwt_validator.auth.dependencies import get_current_user
+from ..interfaces.user_management import UserOut, UserRoleUpdate, UserBaseIn, UserOut_uuid, UserWithRoleNames_id, PaginatedUserResponse,PaginatedUserWithRolesResponse
 from ...Business_Layer.services.user_management_service import UserService
 from ...Data_Access_Layer.utils.dependency import get_db
 import pandas as pd
@@ -19,19 +18,17 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db)
 
 @router.get("/")
-def admin_home(current_user: dict = Depends(get_current_user)):
+def admin_home():
     return {"message": "User Management Route"}
 
 @router.get("/count")
 def count_users(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return {"user_count": user_service.count_users()}
 
 @router.get("/active-count")
 def count_active_users(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return {"active_user_count": user_service.count_active_users()}
@@ -41,7 +38,6 @@ def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=500),
     search: str = Query(None),
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     t_start = time.time()
@@ -69,14 +65,12 @@ def get_users_with_roles(
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
     search: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
 ):
     return user_service.get_users_with_roles(page, limit, search)
 
 @router.get("/id/roles", response_model=list[UserWithRoleNames_id])
 def get_users_with_roles_id(
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     return user_service.get_users_with_roles_id()
@@ -84,7 +78,6 @@ def get_users_with_roles_id(
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     user = user_service.get_user(user_id)
@@ -95,10 +88,10 @@ def get_user(
 @router.get("/uuid/{user_uuid}", response_model=UserOut_uuid)
 def get_user_uuid(
     user_uuid: str,
-    current_user: dict = Depends(get_current_user),
+    request: Request,
     user_service: UserService = Depends(get_user_service)
 ):
-    user = user_service.get_user_uuid(current_user, user_uuid)
+    user = user_service.get_user_uuid(request.state.user, user_uuid)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -107,10 +100,10 @@ def get_user_uuid(
 def create_user(
     user: UserBaseIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
+        current_user = request.state.user
         return user_service.create_user(
             user, 
             created_by_user_id=current_user['user_id'],
@@ -123,7 +116,6 @@ def create_user(
 async def bulk_create_users(
     request: Request,
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -137,7 +129,7 @@ async def bulk_create_users(
                 detail=f"Missing required columns. Expected: {', '.join(required_cols)}"
             )
 
-        result = user_service.create_bulk_user(df, created_by_user_id=current_user["user_id"], request=request)
+        result = user_service.create_bulk_user(df, created_by_user_id=request.state.user["user_id"], request=request)
         return result
 
     except Exception as e:
@@ -148,14 +140,13 @@ def update_user(
     user_id: int,
     user: UserBaseIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
         return user_service.update_user(
             user_id, 
             user,
-            current_user=current_user,
+            current_user=request.state.user,
             request=request
         )
     except ValueError as e:
@@ -166,14 +157,13 @@ def update_user_uuid(
     user_uuid: str,
     user: UserBaseIn,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
         return user_service.update_user_uuid(
             user_uuid, 
             user,
-            current_user=current_user,
+            current_user=request.state.user,
             request=request
         )
     except ValueError as e:
@@ -183,13 +173,12 @@ def update_user_uuid(
 def deactivate_user(
     user_id: int,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
         user_service.deactivate_user(
             user_id,
-            current_user=current_user,
+            current_user=  request.state.user,
             request=request
         )
         return {"message": "User deactivated successfully"}
@@ -200,13 +189,12 @@ def deactivate_user(
 def deactivate_user_uuid(
     user_uuid: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
         user_service.deactivate_user_uuid(
             user_uuid,
-            current_user=current_user,
+            current_user=   request.state.user,
             request=request
         )
         return {"message": "User deactivated successfully"}
@@ -217,7 +205,6 @@ def deactivate_user_uuid(
 def activate_user_uuid(
     user_uuid: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     """
@@ -226,7 +213,7 @@ def activate_user_uuid(
     try:
         user_service.activate_user_uuid(
             user_uuid,
-            current_user=current_user,
+            current_user=   request.state.user,
             request=request
         )
         return {"message": "User activated successfully"}
@@ -238,10 +225,10 @@ def update_user_roles(
     user_id: int,
     payload: UserRoleUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
+        current_user = request.state.user
         message = user_service.update_user_roles(
             user_id, 
             payload.role_ids,
@@ -260,10 +247,10 @@ def update_user_roles_uuid(
     user_uuid: str,
     payload: UserRoleUpdate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
+        current_user = request.state.user
         message = user_service.update_user_roles_uuid(
             user_uuid, 
             payload.role_ids,
@@ -280,7 +267,6 @@ def update_user_roles_uuid(
 @router.get("/{user_id}/roles")
 def get_user_roles(
     user_id: int,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:
@@ -291,7 +277,6 @@ def get_user_roles(
 @router.get("/uuid/{user_uuid}/roles")
 def get_user_roles_uuid(
     user_uuid: str,
-    current_user: dict = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ):
     try:

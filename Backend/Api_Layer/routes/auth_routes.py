@@ -3,7 +3,6 @@ from fastapi.responses import RedirectResponse
 from ..interfaces.auth import RegisterUser, LoginUser, ForgotPassword,ChangePasswordFirstLogin
 from ...Business_Layer.services.auth_service import AuthService
 from ...config.env_loader import get_env_var
-from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Business_Layer.utils.token_blacklist import blacklist_token
 
 
@@ -24,7 +23,7 @@ def login(credentials: LoginUser,request: Request):
     return auth_service.login_user(credentials,client_ip, request)
 
 @router.post("/logout")
-def logout(request: Request, current_user: dict = Depends(get_current_user)):
+def logout(request: Request):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
@@ -83,5 +82,6 @@ def forgot_password(update: ForgotPassword):
     return auth_service.forgot_password(update)
 
 @router.post("/first-login/change-password")
-def change_password_first_login(payload: ChangePasswordFirstLogin,current_user: dict = Depends(get_current_user)):
+def change_password_first_login(payload: ChangePasswordFirstLogin,request: Request):
+    current_user = request.state.user
     return auth_service.change_password_first_login(payload,current_user['user_id'])

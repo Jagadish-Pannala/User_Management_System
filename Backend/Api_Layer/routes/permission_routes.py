@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Request, UploadFile, File
 from sqlalchemy.orm import Session
 from ...Business_Layer.services.permission_service import PermissionService
 from ..interfaces.permission_management import (
-    PermissionBase,
     PermissionOut,
     PermissionCreate,
     PermissionGroupUpdate,
@@ -10,7 +9,6 @@ from ..interfaces.permission_management import (
     PermissionBaseCreation,
     BulkPermissionCreationResponse
 )
-from ..JWT.jwt_validator.auth.dependencies import get_current_user
 from ...Data_Access_Layer.utils.dependency import get_db
 from typing import List
 
@@ -23,7 +21,6 @@ def get_permission_service(db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[PermissionOut])
 def list_permissions(
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.list_permissions()
@@ -31,7 +28,6 @@ def list_permissions(
 
 @router.get("/unmapped", response_model=List[PermissionOut])
 def get_unmapped_permissions(
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.list_unmapped_permissions()
@@ -40,7 +36,6 @@ def get_unmapped_permissions(
 @router.get("/{permission_uuid}", response_model=PermissionOut)
 def get_permission(
     permission_uuid: str,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.get_permission(permission_uuid)
@@ -50,11 +45,10 @@ def get_permission(
 def create_permission(
     payload: PermissionCreate,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.create_permission_minimal(
-        payload.permission_code, payload.description, payload.group_uuid,current_user=current_user,
+        payload.permission_code, payload.description, payload.group_uuid,current_user=request.state.user,
             request=request
     )
 
@@ -63,22 +57,20 @@ def create_permission(
 def create_permission_basic(
     permission: PermissionBaseCreation,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.create_permission_minimal(
-        permission.permission_code, permission.description,current_user=current_user,
+        permission.permission_code, permission.description,current_user=request.state.user,
             request=request
     )
 @router.post("/bulk-permissions-creation", response_model=BulkPermissionCreationResponse)
 def create_bulk_permissions(
     request: Request,
     file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     return service.bulk_permissions_creation(
-        file,current_user=current_user,
+        file,current_user=request.state.user,
             request=request
     )
 
@@ -88,11 +80,10 @@ def update_permission(
     permission_uuid: str,
     payload: PermissionBaseCreation,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     result = service.update_permission(
-        permission_uuid, payload.permission_code, payload.description,current_user=current_user,
+        permission_uuid, payload.permission_code, payload.description,current_user=request.state.user,
             request=request
     )
     
@@ -109,10 +100,9 @@ def update_permission(
 def delete_permission(
     permission_uuid: str,
     request: Request,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
-    service.delete_permission(permission_uuid,current_user=current_user,
+    service.delete_permission(permission_uuid,current_user=request.state.user,
             request=request)
     return {"message": "Permission deleted successfully"}
 
@@ -120,7 +110,6 @@ def delete_permission(
 @router.delete("/cascading/{permission_uuid}")
 def delete_permission_cascade(
     permission_uuid: str,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     service.delete_permission_cascade(permission_uuid)
@@ -131,7 +120,6 @@ def delete_permission_cascade(
 def update_permission_group(
     permission_uuid: str,
     payload: PermissionGroupUpdate,
-    current_user: dict = Depends(get_current_user),
     service: PermissionService = Depends(get_permission_service)
 ):
     service.reassign_group(permission_uuid, payload.group_uuid)
