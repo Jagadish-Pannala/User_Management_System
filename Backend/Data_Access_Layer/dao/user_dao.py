@@ -48,12 +48,7 @@ class UserDAO:
         return self.db.query(models.User).all()
     
     def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
-        timings = {}
-        t_start = time.time()
-        print(f"    🟡 START dao.get_paginated_users")
         
-        # Build base query
-        t1 = time.time()
         base_query = (
             self.db.query(
                 models.User.user_id,
@@ -65,11 +60,9 @@ class UserDAO:
                 models.User.is_active
             )
         )
-        timings['query_init'] = (time.time() - t1) * 1000
         
         # Apply search filter
         if search:
-            t2 = time.time()
             search = search.strip().lower()
             search_pattern = f"%{search}%"
             base_query = base_query.filter(
@@ -80,16 +73,10 @@ class UserDAO:
                     models.User.contact.like(search_pattern)
                 )
             )
-            timings['search_filter'] = (time.time() - t2) * 1000
         
-        # Count query
-        t3 = time.time()
         total = base_query.count()
-        timings['count_query'] = (time.time() - t3) * 1000
-        print(f"      ⏱️  Count query: {timings['count_query']:.2f}ms (total={total})")
         
         # Data fetch query
-        t4 = time.time()
         users = (
             base_query
             .order_by(models.User.first_name)
@@ -97,23 +84,9 @@ class UserDAO:
             .limit(limit)
             .all()
         )
-        timings['data_query'] = (time.time() - t4) * 1000
-        print(f"      ⏱️  Data query: {timings['data_query']:.2f}ms (rows={len(users)})")
         
         # Build response
-        t5 = time.time()
         result = {"total": total, "users": users}
-        timings['response_build'] = (time.time() - t5) * 1000
-        
-        # Total time
-        timings['total'] = (time.time() - t_start) * 1000
-        
-        print(f"    ✅ END dao.get_paginated_users - {timings['total']:.2f}ms")
-        print(f"    📊 Breakdown: {timings}")
-        
-        if timings['total'] > 100:
-            print(f"    ⚠️ SLOW DAO: get_paginated_users took {timings['total']:.2f}ms")
-        
         return result
 
     def get_all_active_users(self) -> List[models.User]:
@@ -153,11 +126,19 @@ class UserDAO:
         existing_emails = self.get_users_by_emails(emails)
         return {email: email in existing_emails for email in emails}
     
-    def get_users_with_roles_id(self) -> List[dict]:
+
+    def get_users_with_roles_id(self) -> List[Dict]:
+        """
+        Returns users with a list of roles per user.
+        Example:
+        [
+            {"user_id": 1, "name": "John Doe", "roles": ["Admin", "HR"], "mail": "john@..."},
+            ...
+        ]
+        """
         results = (
             self.db.query(
                 models.User.user_id,
-                models.User.user_uuid,
                 models.User.first_name,
                 models.User.last_name,
                 models.User.mail,
@@ -165,23 +146,25 @@ class UserDAO:
             )
             .join(models.User_Role, models.User.user_id == models.User_Role.user_id)
             .join(models.Role, models.User_Role.role_id == models.Role.role_id)
+            .order_by(models.User.user_id)
             .all()
         )
 
         user_map = {}
-        for user_id, user_uuid, first_name, last_name, mail, role_name in results:
-            if user_uuid not in user_map:
-                user_map[user_uuid] = {
-                    "user_id": user_id,
-                    "user_uuid": user_uuid,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "mail": mail,
-                    "roles": []
+        for row in results:
+            uid = row.user_id
+            if uid not in user_map:
+                user_map[uid] = {
+                    "user_id": row.user_id,
+                    "name": f"{row.first_name} {row.last_name}".strip(),
+                    "mail": row.mail,
+                    "roles": [row.role_name]
                 }
-            user_map[user_uuid]["roles"].append(role_name)
+            else:
+                user_map[uid]["roles"].append(row.role_name)
 
         return list(user_map.values())
+
 
 
 

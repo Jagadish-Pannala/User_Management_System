@@ -112,6 +112,7 @@ def create_user(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
 @router.post("/multiple-users", response_model=dict)
 async def bulk_create_users(
     request: Request,
@@ -213,7 +214,7 @@ def activate_user_uuid(
     try:
         user_service.activate_user_uuid(
             user_uuid,
-            current_user=   request.state.user,
+            current_user=request.state.user,
             request=request
         )
         return {"message": "User activated successfully"}
