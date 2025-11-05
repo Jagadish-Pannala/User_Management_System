@@ -36,7 +36,7 @@ FRONTEND_URL = get_env_var("FRONTEND_URL")
 #     allow_headers=["*"],
 # )
 
-app.add_middleware(OptimizedPermissionMiddleware)
+# app.add_middleware(OptimizedPermissionMiddleware)
 app.add_middleware(JWTMiddleware)
 app.add_middleware(DBSessionMiddleware)
 
