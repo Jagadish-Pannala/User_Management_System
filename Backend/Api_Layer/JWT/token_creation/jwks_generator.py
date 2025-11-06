@@ -15,7 +15,7 @@ import logging
 PUBLIC_KEY_PATH = Path(__file__).parent / "keys" / "public.pem"
 print("Public Key Path:", PUBLIC_KEY_PATH)
 JWKS_OUTPUT_PATH = Path(__file__).parent / "jwks.json"
-KID = "auth-key-001"   # Must match JWT 'kid' in token header
+KID = "key-20251106125007"   # Must match JWT 'kid' in token header
 ALGORITHM = "RS256"
 
 def generate_jwks():
