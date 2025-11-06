@@ -17,12 +17,13 @@ encoded_password = quote_plus(DB_PASSWORD)
 DB_URL = f"{DB_DRIVER}://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(
     DB_URL,
-    pool_pre_ping=False,  # ✅ Disable for better performance
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
-    pool_recycle=3600,  # ✅ Recycle connections every hour
-    echo=False,  # ✅ Disable SQL logging in production
+    pool_size=15,           # a bit higher base pool
+    max_overflow=30,        # handle burst traffic
+    pool_timeout=15,        # fail fast if pool exhausted
+    pool_recycle=1800,      # 30 min recycling (less chance of stale)
+    pool_pre_ping=True,     # 🔥 must enable this for cloud DBs
+    connect_args={"connect_timeout": 10},  # abort quickly on bad network
+    echo=False,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
