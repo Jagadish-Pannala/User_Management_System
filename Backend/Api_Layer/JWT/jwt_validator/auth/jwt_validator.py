@@ -17,10 +17,11 @@ def validate_jwt_token(token: str):
 
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
+        print(f"Token header 'kid': {kid}")
         if kid not in validator.jwks_dict:
             raise HTTPException(status_code=401, detail="Invalid key ID")
 
-        key = 'key-20251106125007'
+        key = validator.jwks_dict[kid]
 
         decoded = jwt.decode(
             token,

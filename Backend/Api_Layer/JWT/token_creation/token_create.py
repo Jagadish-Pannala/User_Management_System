@@ -3,10 +3,10 @@ import jwt
 from typing import Optional
 from .config import get_jwt_keys
 
-from .config import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-)
+from Backend.config.env_loader import get_env_var
 from ....Business_Layer.utils.generate_uuid7 import generate_uuid7
+
+ACCESS_TOKEN_EXPIRE_MINUTES = int(get_env_var("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 def get_issuer_from_request(request) -> str:
     """
@@ -65,7 +65,7 @@ def token_create(token_data: dict, request=None, issuer: Optional[str] = None) -
         "iss": issuer,
         "exp": expire
     }
-    print("Token Payload:", payload)
+    # print("Token Payload:", payload)
 
     # Include 'kid' in JWT header
     headers = {
