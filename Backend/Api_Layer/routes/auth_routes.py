@@ -60,7 +60,7 @@ def ms_login():
 @router.get("/callback")
 def handle_microsoft_callback(code: str,request: Request):
     try:
-        print("Received code:", code)
+        # print("Received code:", code)
         client_ip = auth_service.get_client_ip(request)
         return auth_service.handle_microsoft_callback(code,client_ip, request)
     except HTTPException as http_exc:

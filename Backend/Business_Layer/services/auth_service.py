@@ -95,7 +95,7 @@ class AuthService:
         }
     
     def handle_microsoft_callback(self, code: str,client_ip, request: Request):
-        print("1. Received code:", code)
+        # print("1. Received code:", code)
  
         token_url = f"https://login.microsoftonline.com/{get_env_var('TENANT_ID')}/oauth2/v2.0/token"
         print("2. Token URL:", token_url)
@@ -112,14 +112,14 @@ class AuthService:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(token_url, data=data, headers=headers)
         print("3. Token exchange status:", response.status_code)
-        print("4. Token response:", response.text)
+        # print("4. Token response:", response.text)
  
         if response.status_code != 200:
             raise HTTPException(status_code=500, detail="Failed to exchange code for token")
  
         token_response = response.json()
         id_token = token_response.get("id_token")
-        print("5. ID Token:", id_token)
+        # print("5. ID Token:", id_token)
  
         if not id_token:
             raise HTTPException(status_code=400, detail="ID token not found in response")

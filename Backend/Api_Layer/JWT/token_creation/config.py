@@ -1,15 +1,45 @@
+# Backend/Api_Layer/JWT/token_creation/config.py
 
-from pathlib import Path
-from Backend.config.env_loader import get_env_var
+from Backend.Business_Layer.utils.jwt_key_update import rotate_jwt_keys
+from Backend.Data_Access_Layer.utils.database import get_db_session
+from Backend.Data_Access_Layer.models.jwt import JWTKeys
+from sqlalchemy.orm import Session
+import json
 
 
-# Token settings
-ALGORITHM = "RS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
-KID = "auth-key-001"  # Must match JWKS key later
+def get_jwt_keys():
+    """
+    Fetch the latest active JWT key from DB. 
+    If none found, trigger rotation and fetch again.
+    """
+    db: Session = next(get_db_session())
 
-# Path to private key
-BASE_DIR = Path(__file__).resolve().parent
-print("hello",BASE_DIR)
-PRIVATE_KEY_PATH = BASE_DIR / "keys" / "private.pem"
-print("hello",PRIVATE_KEY_PATH)
+    key_record = (
+        db.query(JWTKeys)
+        .filter(JWTKeys.is_active == True)
+        .order_by(JWTKeys.created_at.desc())
+        .first()
+    )
+
+    # If no key found, auto-rotate once
+    if not key_record:
+        print("⚠️ No active JWT key found — rotating...")
+        rotate_jwt_keys()
+        db.commit()
+
+        key_record = (
+            db.query(JWTKeys)
+            .filter(JWTKeys.is_active == True)
+            .order_by(JWTKeys.created_at.desc())
+            .first()
+        )
+
+        if not key_record:
+            raise Exception("Key rotation failed — no JWT keys in DB")
+
+    private_pem = key_record.private_key
+    public_pem = key_record.public_key
+    kid = key_record.kid
+    algorithm = key_record.algorithm
+
+    return private_pem, public_pem, algorithm, kid

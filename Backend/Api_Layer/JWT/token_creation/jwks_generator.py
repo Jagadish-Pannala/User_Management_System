@@ -1,53 +1,54 @@
-'''
-Run once manually (or through a deployment script)
-
-Convert public.pem to a proper JWKS JSON format
-
-Save that result for use by your authentication system (public key distribution)
-'''
+"""
+Run once manually (or via cron/deployment) to generate a JWKS (JSON Web Key Set)
+from the active RSA public key stored in the database.
+"""
 
 import json
+import logging
 from jwcrypto import jwk
 from pathlib import Path
-import logging
+from Backend.Api_Layer.JWT.token_creation.config import get_jwt_keys  # ✅ Import absolute path
 
-# Constants
-PUBLIC_KEY_PATH = Path(__file__).parent / "keys" / "public.pem"
-print("Public Key Path:", PUBLIC_KEY_PATH)
-JWKS_OUTPUT_PATH = Path(__file__).parent / "jwks.json"
-KID = "auth-key-001"   # Must match JWT 'kid' in token header
-ALGORITHM = "RS256"
+# Get active key pair and metadata
+
+
+
 
 def generate_jwks():
-    try:
-        # Load the public key from PEM
-        with open(PUBLIC_KEY_PATH, "rb") as pub_file:
-            public_pem = pub_file.read()
-        logging.info(f"Loaded public key from {PUBLIC_KEY_PATH}")
-    except Exception as e:
-        logging.error(f"Failed to load public key: {e}")
-        raise
+
+    private_pem, public_pem, ALGORITHM, KID = get_jwt_keys()
+    """
+    Converts the active public key (PEM) from DB into JWKS format
+    and saves it as jwks.json
+    """
+    JWKS_OUTPUT_PATH = Path(__file__).parent / "jwks.json"
 
     try:
-        # Create a JWK object from the PEM
-        key = jwk.JWK.from_pem(public_pem)
-        # Add required metadata
+        # ✅ Convert the PEM public key into a JWK object
+        key = jwk.JWK.from_pem(public_pem.encode("utf-8"))
+
+        # ✅ Add required metadata
         key_dict = json.loads(key.export_public())
-        key_dict["use"] = "sig"
+        key_dict["use"] = "sig"   # for signature verification
         key_dict["alg"] = ALGORITHM
         key_dict["kid"] = KID
-        # Create the final JWKS
-        jwks = {
-            "keys": [key_dict]
-        }
-        # Write to jwks.json
-        with open(JWKS_OUTPUT_PATH, "w") as f:
+
+        # ✅ Create JWKS container
+        jwks = {"keys": [key_dict]}
+
+        # ✅ Write the JWKS file
+        with open(JWKS_OUTPUT_PATH, "w", encoding="utf-8") as f:
             json.dump(jwks, f, indent=2)
-        logging.info(f"JWKS written to {JWKS_OUTPUT_PATH}")
+
+        logging.info(f"✅ JWKS successfully written to {JWKS_OUTPUT_PATH}")
+
     except Exception as e:
-        logging.error(f"Failed to generate or write JWKS: {e}")
+        logging.error(f"❌ Failed to generate JWKS: {e}")
         raise
 
-# Run only if this is called directly
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Generating JWKS from database keys...")
     generate_jwks()
+    logging.info("JWKS generation completed ✅")
