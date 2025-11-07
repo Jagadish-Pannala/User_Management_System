@@ -1,5 +1,7 @@
+# Backend/Business_Layer/utils/jwt_encode.py
 from cryptography.fernet import Fernet
 from Backend.config.env_loader import get_env_var
+
 
 # Get encryption key from environment (.env)
 FERNET_KEY = get_env_var("FERNET_SECRET_KEY")  # Must be a base64-encoded 32-byte key

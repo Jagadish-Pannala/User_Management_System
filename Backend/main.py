@@ -75,6 +75,14 @@ async def add_timing_middleware(request: Request, call_next):
         logger.warning(f"🟠 SLOW REQUEST: {method} {path} took {elapsed:.2f}ms")
     
     return response
+@app.on_event("startup")
+def generate_jwks_on_startup():
+    from Backend.Api_Layer.JWT.token_creation.jwks_generator import generate_jwks
+    try:
+        generate_jwks()
+        print("✅ JWKS file ensured at startup.")
+    except Exception as e:
+        print(f"⚠️ Failed to generate JWKS at startup: {e}")
 
 def custom_openapi():
     if app.openapi_schema:
