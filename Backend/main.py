@@ -94,7 +94,7 @@ def custom_openapi():
     }
     for path in openapi_schema["paths"]:
         for method in openapi_schema["paths"][path]:
-            if method in ["get", "post", "put", "delete"]:
+            if method in ["get", "post", "put", "delete","patch"]:
                 openapi_schema["paths"][path][method]["security"] = [{"BearerAuth": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
