@@ -7,29 +7,28 @@ import json
 import logging
 from jwcrypto import jwk
 from pathlib import Path
-from Backend.Api_Layer.JWT.token_creation.config import get_jwt_keys  # ✅ Import absolute path
-
-# Get active key pair and metadata
-
-
+from Backend.Api_Layer.JWT.token_creation.config import get_jwt_keys
+from Backend.Business_Layer.utils.jwt_encode import decrypt_key  # ✅ Use existing decrypt function
 
 
 def generate_jwks():
-
-    private_pem, public_pem, ALGORITHM, KID = get_jwt_keys()
     """
     Converts the active public key (PEM) from DB into JWKS format
     and saves it as jwks.json
     """
+    private_pem, public_pem, ALGORITHM, KID = get_jwt_keys()
     JWKS_OUTPUT_PATH = Path(__file__).parent / "jwks.json"
 
     try:
+        # 🔓 Decrypt the Fernet-encrypted public key from DB
+        decrypted_public_pem = decrypt_key(public_pem)
+
         # ✅ Convert the PEM public key into a JWK object
-        key = jwk.JWK.from_pem(public_pem.encode("utf-8"))
+        key = jwk.JWK.from_pem(decrypted_public_pem.encode("utf-8"))
 
         # ✅ Add required metadata
         key_dict = json.loads(key.export_public())
-        key_dict["use"] = "sig"   # for signature verification
+        key_dict["use"] = "sig"   # used for signature verification
         key_dict["alg"] = ALGORITHM
         key_dict["kid"] = KID
 

@@ -1,7 +1,7 @@
 # Backend/Api_Layer/JWT/token_creation/config.py
 
 from Backend.Business_Layer.utils.jwt_key_update import rotate_jwt_keys
-from Backend.Data_Access_Layer.utils.database import get_db_session
+from Backend.Data_Access_Layer.utils.database import get_db_session, set_db_session
 from Backend.Data_Access_Layer.models.jwt import JWTKeys
 from sqlalchemy.orm import Session
 import json
@@ -12,7 +12,7 @@ def get_jwt_keys():
     Fetch the latest active JWT key from DB. 
     If none found, trigger rotation and fetch again.
     """
-    db: Session = next(get_db_session())
+    db: Session = set_db_session()
 
     key_record = (
         db.query(JWTKeys)
