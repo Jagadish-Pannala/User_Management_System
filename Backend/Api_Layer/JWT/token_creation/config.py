@@ -5,6 +5,8 @@ from Backend.Data_Access_Layer.utils.database import get_db_session, set_db_sess
 from Backend.Data_Access_Layer.models.jwt import JWTKeys
 from sqlalchemy.orm import Session
 import json
+from sqlalchemy import and_
+from sqlalchemy.sql import func
 
 
 def get_jwt_keys():
@@ -14,9 +16,16 @@ def get_jwt_keys():
     """
     db: Session = set_db_session()
 
+    now = func.now()  # ✅ use SQLAlchemy's server-side NOW()
+
     key_record = (
         db.query(JWTKeys)
-        .filter(JWTKeys.is_active == True)
+        .filter(
+            and_(
+                JWTKeys.is_active == True,
+                JWTKeys.expires_at > now
+            )
+        )
         .order_by(JWTKeys.created_at.desc())
         .first()
     )
