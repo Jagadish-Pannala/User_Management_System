@@ -9,9 +9,8 @@ from sqlalchemy.orm import Session
 
 
 class ProfileService(BaseService):
-    def __init__(self):
-        super().__init__()
-        db: Session = next(get_db()) 
+    def __init__(self, db: Session):
+        self.db = db
         self.dao = UserDAO(db)
 
     def get_profile(self, current_user: dict):
