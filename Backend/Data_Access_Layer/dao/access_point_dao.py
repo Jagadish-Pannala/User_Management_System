@@ -82,10 +82,11 @@ class AccessPointDAO:
             self.db.query(AccessPoint)
             .options(
                 joinedload(AccessPoint.permission_mappings)
-                .joinedload("permission")  # Join permission from AccessPointPermission
+                .joinedload(AccessPointPermission.permission)   # FIXED
             )
             .all()
         )
+
 
     def update_access_point(self, access_id: int, **data) -> Optional[AccessPoint]:
         now = datetime.utcnow()

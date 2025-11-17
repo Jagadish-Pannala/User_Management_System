@@ -58,14 +58,24 @@ class OIDCValidator:
             traceback.print_exc()
             raise FileNotFoundError("Could not find or create JWKS file.") from e
 
-    def _load_config_from_file(self):
-        """Load JWKS configuration directly from file - no HTTP requests"""
+    def _load_config_from_file(self, force_reload=False):
+        """Load JWKS configuration directly from file - no HTTP requests
+        
+        Args:
+            force_reload: If True, reload even if already loaded (clears cache)
+        """
         with self._config_lock:
-            if self._config_loaded:
+            # ✅ UPDATED: Allow forcing a reload even if already loaded
+            if self._config_loaded and not force_reload:
                 return
             
             try:
-                print("📂 Loading OIDC configuration from JWKS file...")
+                # ✅ UPDATED: Log reload status
+                if force_reload:
+                    print("🔄 Force reloading OIDC configuration from JWKS file...")
+                else:
+                    print("📂 Loading OIDC configuration from JWKS file...")
+                
                 if not self.jwks_path or not self.jwks_path.exists():
                     print("⚠️ JWKS file missing during load. Regenerating...")
                     generate_jwks()
@@ -81,6 +91,12 @@ class OIDCValidator:
 
                 keys = jwks_data.get("keys", [])
                 print(f"Found {len(keys)} keys in JWKS file.")
+
+                # ✅ UPDATED: Clear existing keys when force reloading
+                if force_reload:
+                    old_kids = list(self.jwks_dict.keys())
+                    self.jwks_dict.clear()
+                    print(f"🗑️ Cleared {len(old_kids)} cached keys: {old_kids}")
 
                 for i, key in enumerate(keys):
                     try:
@@ -112,13 +128,39 @@ class OIDCValidator:
         return self._config_loaded
 
     def get_signing_key(self, kid: str):
-        """Get signing key by KID"""
+        """Get signing key by KID, auto-reload if not found
+        
+        Args:
+            kid: The Key ID from the JWT header
+            
+        Returns:
+            RSA public key for signature verification
+            
+        Raises:
+            ValueError: If KID not found even after reload
+        """
         if not self.is_ready():
             raise RuntimeError("OIDC configuration not loaded.")
         
+        # ✅ UPDATED: Auto-reload if KID not found in cache
         if kid not in self.jwks_dict:
             available = list(self.jwks_dict.keys())
-            raise ValueError(f"Key ID '{kid}' not found. Available keys: {available}")
+            print(f"⚠️ Key ID '{kid}' not found in cache.")
+            print(f"   Current cached KIDs: {available}")
+            print(f"   Attempting to reload JWKS from file...")
+            
+            # Force reload from file
+            self._load_config_from_file(force_reload=True)
+            
+            # ✅ UPDATED: Check again after reload
+            if kid not in self.jwks_dict:
+                available = list(self.jwks_dict.keys())
+                raise ValueError(
+                    f"Key ID '{kid}' not found even after reloading JWKS. "
+                    f"Available keys: {available}"
+                )
+            
+            print(f"✅ Key '{kid}' successfully loaded after reload")
         
         return self.jwks_dict[kid]
 

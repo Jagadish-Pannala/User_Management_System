@@ -12,7 +12,7 @@ from sqlalchemy.sql import func
 def get_jwt_keys():
     """
     Fetch the latest active JWT key from DB. 
-    If none found, trigger rotation and fetch again.
+    If none found, trigger rotation and update JWKS file.
     """
     db: Session = set_db_session()
 
@@ -35,6 +35,16 @@ def get_jwt_keys():
         print("⚠️ No active JWT key found — rotating...")
         rotate_jwt_keys()
         db.commit()
+        
+        # ✅ UPDATED: Import here to avoid circular dependency
+        from Backend.Api_Layer.JWT.token_creation.jwks_generator import generate_jwks
+        
+        # ✅ UPDATED: Regenerate JWKS after rotation
+        try:
+            generate_jwks()
+            print("✅ JWKS file updated after auto-rotation in get_jwt_keys()")
+        except Exception as jwks_error:
+            print(f"⚠️ Failed to update JWKS file: {jwks_error}")
 
         key_record = (
             db.query(JWTKeys)
