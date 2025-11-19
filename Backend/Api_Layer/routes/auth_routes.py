@@ -86,6 +86,6 @@ def change_password_first_login(payload: ChangePasswordFirstLogin,request: Reque
     current_user = request.state.user
     return auth_service.change_password_first_login(payload,current_user['user_id'])
 
-@router.get("/endpoint-check")
+@router.post("/offerletter-accepted")
 def check_endpoint(request: Request):
     return {"message": "Endpoint is working"}
