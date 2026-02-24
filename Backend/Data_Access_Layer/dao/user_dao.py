@@ -49,18 +49,19 @@ class UserDAO:
     
     def get_paginated_users(self, page: int, limit: int, search: Optional[str] = None):
         
-        base_query = (
-            self.db.query(
-                models.User.user_id,
-                models.User.user_uuid,
-                models.User.first_name,
-                models.User.last_name,
-                models.User.mail,
-                models.User.contact,
-                models.User.is_active
-            )
-        )
-        
+            # base_query = (
+            #     self.db.query(
+            #         models.User.user_id,
+            #         models.User.user_uuid,
+            #         models.User.first_name,
+            #         models.User.last_name,
+            #         models.User.mail,
+            #         models.User.contact,
+            #         models.User.is_active,
+            #         models.User.gender
+            #     )
+            # )
+        base_query = self.db.query(models.User)
         # Apply search filter
         if search:
             search = search.strip().lower()

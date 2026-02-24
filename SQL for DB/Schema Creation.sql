@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS User (
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     mail VARCHAR(150) UNIQUE,
+    gender ENUM('MALE', 'FEMALE', 'OTHER') DEFAULT NULL,
     contact VARCHAR(15),
     password VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,

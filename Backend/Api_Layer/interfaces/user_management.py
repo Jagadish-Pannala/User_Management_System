@@ -22,8 +22,15 @@ class UserBaseIn(BaseModel):
 
 class UserOut(UserBase):
     user_id: int
-    class Config:
-       from_attributes = True
+    user_uuid: str
+    first_name: str
+    last_name: str
+    mail: str
+    contact: str
+    password: str
+    is_active: bool
+    gender: Optional[str] = None
+
 
 class UserOut_uuid(UserBase):
     class Config:
