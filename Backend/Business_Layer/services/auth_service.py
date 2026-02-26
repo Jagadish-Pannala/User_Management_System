@@ -216,36 +216,46 @@ class AuthService:
         dao.password_last_updated(user.user_id)
         return {"message": "Password updated and user activated"}
 
-    def change_password_first_login(self, payload:ChangePasswordFirstLogin , user_id: int):
-
+    def change_password_first_login(self, payload: ChangePasswordFirstLogin, user_id: int):
+ 
         dao = self._get_dao()
-
+ 
         user_email = payload.email
-
         user = dao.get_user_by_email(user_email)
-
+ 
+        # ✅ FIRST check if user exists
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+ 
+        # ✅ THEN check ownership
         if user.user_id != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only change your own password")
-
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only change your own password"
+            )
+ 
         new_password = payload.new_password
         confirm_password = payload.confirm_password
-        
-
-        if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        
+ 
         if new_password != confirm_password:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
-        
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Passwords do not match"
+            )
+ 
         validate_password_strength(new_password)
+ 
         new_hashed_password = hash_password(new_password)
-
+ 
         if not dao.update_user_password(user, new_hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update password"
             )
-        
+ 
         return {"message": "Password changed successfully"}
 
         

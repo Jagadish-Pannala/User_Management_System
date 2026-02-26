@@ -84,7 +84,7 @@ def forgot_password(update: ForgotPassword):
 @router.post("/first-login/change-password")
 def change_password_first_login(payload: ChangePasswordFirstLogin,request: Request):
     current_user = request.state.user
-    return auth_service.change_password_first_login(payload,current_user['user_id'])
+    return auth_service.change_password_first_login(payload,current_user.get('user_id'))
 
 @router.post("/offerletter-accepted")
 def check_endpoint(request: Request):
