@@ -11,7 +11,7 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
         print("Permission Middleware - ENTERING")
 
         public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known", "/middleware/check-permission"]
-        if request.method == "OPTIONS" or any(request.url.path.startswith(p) for p in public_paths):
+        if request.method == "OPTIONS" or any(request.url.path.startswith(p) for p in public_paths) and request.url.path != "/auth/first-login/change-password":
             response = await call_next(request)
         else:
             # JWT middleware must set request.state.user
