@@ -22,6 +22,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           cd ~/User_Management_System
+          rm -f Backend/Api_Layer/JWT/token_creation/jwks.json
           git pull origin main
           source venv/bin/activate
           cd Backend

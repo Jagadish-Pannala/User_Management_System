@@ -1,11 +1,21 @@
-Frontend/node_modules
-
+# Python
 __pycache__/
 *.py[cod]
-*.pyo   
-
+*.pyo
 *.pyd
-*.env
+
+# Environment
+.env
+
+# Archives
 *.zip
-Front_End/node_modules
-frontend_intranet/node_modules
+
+# JSON secrets (optional)
+*.json
+jwks.json
+
+# Node
+node_modules/
+Frontend/node_modules/
+Front_End/node_modules/
+frontend_intranet/node_modules/
