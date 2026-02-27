@@ -16,7 +16,7 @@ class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
             "/redoc",
             "/openapi.json",
             "/auth",
-            # "/.well-known",
+            "/.well-known",
             "/middleware/check-permission",
         ]
 

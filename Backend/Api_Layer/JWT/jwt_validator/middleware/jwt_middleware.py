@@ -12,7 +12,7 @@ class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         print("JWT Middleware - ENTERING")
         t_start = time.time()
-        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth"]
+        public_paths = ["/docs", "/redoc", "/openapi.json", "/auth", "/.well-known"]
         if request.method == "OPTIONS" or any(request.url.path.startswith(p) for p in public_paths) and request.url.path != "/auth/first-login/change-password":
             print(f"JWT Middleware - Skipping: {request.url.path}")
             return await call_next(request)
