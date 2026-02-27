@@ -13,7 +13,7 @@ class User(Base):
     mail = Column(String(150), unique=True)
     contact = Column(String(15))
     password = Column(String(255))
-    gender = Column(String(10))
+    gender = Column(String(10), default="MALE", nullable=False)
     is_active = Column(Boolean, default=True)
     password_last_updated = Column(DateTime, default=None)
     last_login_at = Column(DateTime, default=None)

@@ -13,3 +13,5 @@ openpyxl
 python-multipart
 redis
 pandas
+jwcrypto
+bcrypt==4.0.1
