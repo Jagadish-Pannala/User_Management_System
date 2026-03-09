@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status, Request
 import requests
+import time
 import jwt
 from jwt import PyJWKClient
 from ...Api_Layer.interfaces.auth import RegisterUser, LoginUser, ForgotPassword,ChangePasswordFirstLogin
@@ -57,21 +58,31 @@ class AuthService:
 
         return {"msg": "User registered successfully", "user_id": created_user.user_id}
 
+
+
     def login_user(self, credentials: LoginUser, client_ip: str, request: Request):
         dao = self._get_dao()
+        t = time.time()
 
         validate_email_format(credentials.email)
+        
         user = dao.get_active_user_by_email(credentials.email)
+        print(f"⏱ get_active_user_by_email: {(time.time()-t)*1000:.1f}ms"); t = time.time()
+        
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive")
-        
-        
-        # validate_password_strength(credentials.password)
+            raise HTTPException(status_code=404, detail="User not found or inactive")
+
         verify_password(credentials.password, user.password)
+        print(f"⏱ verify_password: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         roles = dao.get_user_roles(user.user_id)
+        print(f"⏱ get_user_roles: {(time.time()-t)*1000:.1f}ms"); t = time.time()
+
         group_ids = dao.get_permission_group_ids_for_user(user.user_id)
+        print(f"⏱ get_permission_group_ids: {(time.time()-t)*1000:.1f}ms"); t = time.time()
+
         permissions = dao.get_permissions_by_group_ids(group_ids)
+        print(f"⏱ get_permissions_by_group_ids: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         token_data = {
             "sub": str(user.user_id),
@@ -81,13 +92,17 @@ class AuthService:
             "roles": roles,
             "permissions": permissions
         }
-        access_token = token_create(token_data, request = request)
+        access_token = token_create(token_data, request=request)
+        print(f"⏱ token_create: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         redirect = "/dashboard"
         if dao.check_user_first_login(user.user_id):
             redirect = "/change-password"
+        print(f"⏱ check_user_first_login: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         dao.update_last_login(user.user_id, client_ip)
+        print(f"⏱ update_last_login: {(time.time()-t)*1000:.1f}ms")
+
         return {
             "access_token": access_token,
             "token_type": "bearer",
