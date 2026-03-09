@@ -43,11 +43,14 @@ def validate_jwt_token(token: str):
 
         # Check if token is blacklisted
         jti = decoded.get("jti")
-        if jti and is_token_blacklisted(jti):
-            print(f"🚫 Token blacklisted (jti={jti})")
-            raise HTTPException(status_code=401, detail="Token has been revoked")
-
-        print(f"✅ Token validated successfully")
+        try:
+            if jti and is_token_blacklisted(jti):
+                print(f"🚫 Token blacklisted (jti={jti})")
+                raise HTTPException(status_code=401, detail="Token has been revoked")
+        except HTTPException:
+            raise  # re-raise the revoked token exception
+        except Exception as e:
+            print(f"⚠️ Blacklist check error (ignored): {e}")  # Redis down, allow request
         return decoded
         
     except jwt.ExpiredSignatureError:

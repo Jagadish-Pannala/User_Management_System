@@ -1,48 +1,57 @@
 # Backend/Business_Layer/utils/redis_client.py
 import redis
+import time
+import logging
 from ...config.env_loader import get_env_var
+
+logger = logging.getLogger(__name__)
 
 REDIS_URL = get_env_var("REDIS_URL")
 
 _redis_client = None
-_redis_available = True
+_last_failure_time = None
+RETRY_AFTER_SECONDS = 30  # try reconnecting every 30s after failure
+
 
 def get_redis_client():
-    """
-    Returns a connected synchronous Redis client.
-    Uses singleton pattern to avoid multiple connections.
-    Returns None if Redis is unavailable (no delays).
-    """
-    global _redis_client, _redis_available
-    
-    # If we already know Redis is unavailable, return immediately
-    if not _redis_available:
-        return None
-    
+    global _redis_client, _last_failure_time
+
+    # If failed recently, don't retry yet (avoid hammering)
+    if _last_failure_time:
+        if time.time() - _last_failure_time < RETRY_AFTER_SECONDS:
+            return None
+        else:
+            # Retry window passed — reset and try again
+            logger.info("🔄 Retrying Redis connection...")
+            _redis_client = None
+            _last_failure_time = None
+
     if _redis_client is None:
         try:
-            # Parse Redis URL or use defaults
             _redis_client = redis.from_url(
                 REDIS_URL,
                 decode_responses=True,
-                socket_connect_timeout=1,  # Quick timeout
-                socket_timeout=1,
-                retry_on_timeout=False
+                socket_connect_timeout=2,
+                socket_timeout=2,
+                retry_on_timeout=False,
+                health_check_interval=30,  # 👈 auto-detects dropped connections
             )
-            # Test connection
             _redis_client.ping()
-            print("✅ Redis connected successfully")
+            logger.info("✅ Redis connected successfully")
         except Exception as e:
-            print(f"⚠️ Redis unavailable, running without cache: {e}")
-            _redis_available = False
+            logger.warning(f"⚠️ Redis unavailable: {e}")
+            _last_failure_time = time.time()
             _redis_client = None
             return None
-    
+
     return _redis_client
 
+
 def close_redis_client():
-    """Close Redis connection"""
     global _redis_client
     if _redis_client:
-        _redis_client.close()
+        try:
+            _redis_client.close()
+        except Exception:
+            pass
         _redis_client = None
