@@ -64,11 +64,15 @@ class AuthService:
         dao = self._get_dao()
         validate_email_format(credentials.email)
 
+        t = time.time()
         user, roles, permissions = dao.get_user_login_data(credentials.email)
+        print(f"⏱ get_user_login_data: {(time.time()-t)*1000:.1f}ms"); t = time.time()
+
         if not user:
             raise HTTPException(status_code=404, detail="User not found or inactive")
 
         verify_password(credentials.password, user.password)
+        print(f"⏱ verify_password: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         token_data = {
             "sub": str(user.user_id),
@@ -78,20 +82,18 @@ class AuthService:
             "roles": roles,
             "permissions": permissions
         }
-
-        # ✅ Pass existing DB session — no new connection opened
         access_token = token_create(token_data, request=request, db=dao.db)
+        print(f"⏱ token_create: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         redirect = "/dashboard"
         if dao.check_user_first_login(user.user_id):
             redirect = "/change-password"
+        print(f"⏱ check_user_first_login: {(time.time()-t)*1000:.1f}ms"); t = time.time()
 
         dao.update_last_login(user.user_id, client_ip)
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "redirect": redirect
-        }
+        print(f"⏱ update_last_login: {(time.time()-t)*1000:.1f}ms")
+
+        return {"access_token": access_token, "token_type": "bearer", "redirect": redirect}
     
     def handle_microsoft_callback(self, code: str,client_ip, request: Request):
         # print("1. Received code:", code)
