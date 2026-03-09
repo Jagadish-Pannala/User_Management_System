@@ -26,6 +26,41 @@ class AuthDAO:
             models.User.is_active == True
         ).first()
     
+    def get_user_login_data(self, email: str):
+        """
+        Single query to get user + roles + permissions for login.
+        Replaces 4 separate queries with 1 joined query.
+        """
+        # Step 1: Get user first (need to verify exists + get password)
+        user = self.db.query(models.User).filter(
+            models.User.mail == email,
+            models.User.is_active == True
+        ).first()
+
+        if not user:
+            return None, [], []
+
+        # Step 2: Roles + permissions in one joined query
+        results = (
+            self.db.query(
+                models.Role.role_name,
+                models.Permissions.permission_code
+            )
+            .join(models.User_Role, models.User_Role.role_id == models.Role.role_id)
+            .join(models.Role_Permission_Group, models.Role_Permission_Group.role_id == models.Role.role_id)
+            .join(models.Permission_Group_Mapping, models.Permission_Group_Mapping.group_id == models.Role_Permission_Group.group_id)
+            .join(models.Permissions, models.Permissions.permission_id == models.Permission_Group_Mapping.permission_id)
+            .filter(models.User_Role.user_id == user.user_id)
+            .distinct()
+            .all()
+        )
+
+        roles = list({r.role_name for r in results})
+        permissions = list({r.permission_code for r in results})
+
+        return user, roles, permissions
+
+    
     def update_last_login(self, user_id: int, ip: str):
         user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
         if not user:
