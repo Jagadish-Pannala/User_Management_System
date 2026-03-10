@@ -6,12 +6,18 @@ from .....Data_Access_Layer.utils.database import set_db_session, remove_db_sess
 import time
 
 class DBSessionMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to manage database session lifecycle per request.
-    Ensures session creation before processing and cleanup after.
-    """
+    # Routes that don't need a DB session
+    SKIP_PATHS = [
+        "/.well-known/jwks.json",
+        "/.well-known/openid-configuration",
+    ]
 
     async def dispatch(self, request: Request, call_next):
+        
+        # ✅ Skip DB session for routes that don't need it
+        if any(request.url.path.startswith(p) for p in self.SKIP_PATHS):
+            return await call_next(request)
+        
         t_start = time.time()  # Start timing
         print("🟢 DB Middleware - ENTERING")
 
