@@ -2,18 +2,17 @@
 
 import json
 import threading
-from jwt import algorithms
-from Backend.config.env_loader import get_env_var
-from pathlib import Path
-from typing import Optional
-import os
-import logging
 import traceback
+from jwt import algorithms
+from typing import Optional
+from jwcrypto import jwk as jwk_lib
 
-# Import JWKS generator
-from Backend.Api_Layer.JWT.token_creation.jwks_generator import generate_jwks
+from Backend.config.env_loader import get_env_var
+from Backend.Api_Layer.JWT.token_creation.config import get_active_public_key
+from Backend.Business_Layer.utils.jwt_encode import decrypt_key
 
 ISSUER = get_env_var("ISSUER")
+
 
 class OIDCValidator:
     def __init__(self):
@@ -21,105 +20,51 @@ class OIDCValidator:
         self.jwks_dict = {}
         self._config_loaded = False
         self._config_lock = threading.Lock()
-        self.jwks_path = None
-        
-        # Find or create JWKS file
-        self._find_or_create_jwks_file()
 
-    def _find_or_create_jwks_file(self):
-        """Find the JWKS file, or auto-generate if missing"""
-        print("🔍 Searching for JWKS file...")
+        # Load keys on creation
+        self._load_config_from_memory()
 
-        try:
-            # Step 1: Compute expected JWKS path
-            current_file = Path(__file__).resolve()
-            backend_root = current_file.parent
-            while backend_root.name != "Backend" and backend_root.parent != backend_root:
-                backend_root = backend_root.parent
-            
-            jwks_path = backend_root / "Api_Layer" / "JWT" / "token_creation" / "jwks.json"
-            print(f"Expected JWKS path: {jwks_path}")
-
-            # Step 2: If missing, generate it
-            if not jwks_path.exists():
-                print("⚠️ JWKS file not found. Generating a new one...")
-                try:
-                    generate_jwks()
-                    print(f"✅ JWKS successfully generated at: {jwks_path}")
-                except Exception as gen_err:
-                    print(f"❌ JWKS auto-generation failed: {gen_err}")
-                    raise
-
-            self.jwks_path = jwks_path
-            print(f"✅ JWKS file ready at: {self.jwks_path}")
-
-        except Exception as e:
-            print(f"❌ JWKS file detection/generation failed: {e}")
-            traceback.print_exc()
-            raise FileNotFoundError("Could not find or create JWKS file.") from e
-
-    def _load_config_from_file(self, force_reload=False):
-        """Load JWKS configuration directly from file - no HTTP requests
-        
-        Args:
-            force_reload: If True, reload even if already loaded (clears cache)
+    def _load_config_from_memory(self, force_reload=False):
+        """
+        Load public key directly from memory cache.
+        No file reading, no HTTP calls.
+        Falls back to DB only on cold start.
         """
         with self._config_lock:
-            # ✅ UPDATED: Allow forcing a reload even if already loaded
             if self._config_loaded and not force_reload:
                 return
-            
+
             try:
-                # ✅ UPDATED: Log reload status
                 if force_reload:
-                    print("🔄 Force reloading OIDC configuration from JWKS file...")
+                    print("🔄 Force reloading OIDC config from memory cache...")
                 else:
-                    print("📂 Loading OIDC configuration from JWKS file...")
-                
-                if not self.jwks_path or not self.jwks_path.exists():
-                    print("⚠️ JWKS file missing during load. Regenerating...")
-                    generate_jwks()
+                    print("📂 Loading OIDC config from memory cache...")
 
-                with open(self.jwks_path, 'r', encoding='utf-8') as f:
-                    jwks_data = json.load(f)
+                # ✅ Get from memory cache (DB only on cold start)
+                private_pem, public_pem, algorithm, kid = get_active_public_key()
+                decrypted_public = decrypt_key(public_pem)
 
-                if "keys" not in jwks_data or not jwks_data["keys"]:
-                    print("⚠️ Empty or invalid JWKS file. Regenerating...")
-                    generate_jwks()
-                    with open(self.jwks_path, 'r', encoding='utf-8') as f:
-                        jwks_data = json.load(f)
+                # Convert PEM → JWK dict → RSA key object
+                jwk_obj = jwk_lib.JWK.from_pem(decrypted_public.encode())
+                jwk_dict = json.loads(jwk_obj.export_public())
+                jwk_dict["use"] = "sig"
+                jwk_dict["alg"] = algorithm
+                jwk_dict["kid"] = kid
 
-                keys = jwks_data.get("keys", [])
-                print(f"Found {len(keys)} keys in JWKS file.")
+                rsa_key = algorithms.RSAAlgorithm.from_jwk(json.dumps(jwk_dict))
 
-                # ✅ UPDATED: Clear existing keys when force reloading
+                # Clear old keys if force reloading
                 if force_reload:
                     old_kids = list(self.jwks_dict.keys())
                     self.jwks_dict.clear()
-                    print(f"🗑️ Cleared {len(old_kids)} cached keys: {old_kids}")
+                    print(f"🗑️ Cleared cached keys: {old_kids}")
 
-                for i, key in enumerate(keys):
-                    try:
-                        kid = key.get("kid")
-                        if not kid:
-                            print(f"⚠️ Key #{i+1} missing 'kid', skipping.")
-                            continue
-                        rsa_key = algorithms.RSAAlgorithm.from_jwk(json.dumps(key))
-                        self.jwks_dict[kid] = rsa_key
-                        print(f"✅ Loaded key: {kid}")
-                    except Exception as key_error:
-                        print(f"❌ Failed to process key #{i+1}: {key_error}")
-                        continue
-
-                if not self.jwks_dict:
-                    raise ValueError("No valid keys could be processed from JWKS file.")
-
+                self.jwks_dict[kid] = rsa_key
                 self._config_loaded = True
-                print(f"✅ OIDC configuration successfully loaded.")
-                print(f"Available KIDs: {list(self.jwks_dict.keys())}")
+                print(f"✅ OIDC config loaded from memory. KID: {kid}")
 
             except Exception as e:
-                print(f"❌ Failed to load JWKS configuration: {e}")
+                print(f"❌ Failed to load OIDC config: {e}")
                 traceback.print_exc()
                 raise
 
@@ -128,73 +73,71 @@ class OIDCValidator:
         return self._config_loaded
 
     def get_signing_key(self, kid: str):
-        """Get signing key by KID, auto-reload if not found
-        
-        Args:
-            kid: The Key ID from the JWT header
-            
-        Returns:
-            RSA public key for signature verification
-            
-        Raises:
-            ValueError: If KID not found even after reload
+        """
+        Get signing key by KID.
+        Auto-reloads from memory if KID not found (handles key rotation).
         """
         if not self.is_ready():
             raise RuntimeError("OIDC configuration not loaded.")
-        
-        # ✅ UPDATED: Auto-reload if KID not found in cache
+
         if kid not in self.jwks_dict:
-            available = list(self.jwks_dict.keys())
-            print(f"⚠️ Key ID '{kid}' not found in cache.")
-            print(f"   Current cached KIDs: {available}")
-            print(f"   Attempting to reload JWKS from file...")
-            
-            # Force reload from file
-            self._load_config_from_file(force_reload=True)
-            
-            # ✅ UPDATED: Check again after reload
+            print(f"⚠️ KID '{kid}' not in cache, reloading...")
+            print(f"   Current cached KIDs: {list(self.jwks_dict.keys())}")
+
+            # Force reload — handles key rotation case
+            self._load_config_from_memory(force_reload=True)
+
             if kid not in self.jwks_dict:
-                available = list(self.jwks_dict.keys())
                 raise ValueError(
-                    f"Key ID '{kid}' not found even after reloading JWKS. "
-                    f"Available keys: {available}"
+                    f"Key ID '{kid}' not found even after reload. "
+                    f"Available keys: {list(self.jwks_dict.keys())}"
                 )
-            
-            print(f"✅ Key '{kid}' successfully loaded after reload")
-        
+
+            print(f"✅ Key '{kid}' loaded after reload")
+
         return self.jwks_dict[kid]
+
 
 # --- Global helpers ---
 
 _oidc_validator: Optional[OIDCValidator] = None
 _oidc_lock = threading.Lock()
 
+
 def get_oidc_validator():
-    """Returns the singleton OIDC validator instance (lazy-loaded)."""
+    """Returns singleton OIDC validator (lazy-loaded)."""
     global _oidc_validator
 
+    # Fast path — already ready
     if _oidc_validator is not None and _oidc_validator.is_ready():
         return _oidc_validator
 
     with _oidc_lock:
+        # Create if not exists — __init__ calls _load_config_from_memory
         if _oidc_validator is None:
             print("🔐 Initializing OIDC validator...")
             _oidc_validator = OIDCValidator()
 
+        # Retry load if init failed
         if not _oidc_validator.is_ready():
-            _oidc_validator._load_config_from_file()
+            _oidc_validator._load_config_from_memory()
 
         return _oidc_validator
 
+
 def reset_oidc_validator():
-    """Reset the validator for refresh/debug purposes."""
+    """
+    Reset validator — call this after key rotation
+    so next request picks up the new key.
+    """
     global _oidc_validator
     with _oidc_lock:
         _oidc_validator = None
         print("🔄 OIDC validator reset.")
 
+
 def check_oidc_health():
-    """Perform a quick health check on JWKS file availability."""
+    """Health check for OIDC validator."""
     try:
         validator = get_oidc_validator()
         return validator.is_ready()

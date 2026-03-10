@@ -2,9 +2,12 @@ from jwcrypto import jwk
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
 from sqlalchemy import update, delete
-from Backend.Data_Access_Layer.utils.database import set_db_session, remove_db_session, get_db_session
+from Backend.Data_Access_Layer.utils.database import set_db_session, remove_db_session
 from Backend.Data_Access_Layer.models.jwt import JWTKeys
 from Backend.config.env_loader import get_env_var
+from Backend.Api_Layer.JWT.token_creation.config import invalidate_jwks_cache
+from Backend.Api_Layer.JWT.jwt_validator.auth.oidc_config import reset_oidc_validator
+
 
 def rotate_jwt_keys():
     """
@@ -12,6 +15,7 @@ def rotate_jwt_keys():
     - Deletes expired keys
     - Deactivates old ones
     - Creates and stores a new encrypted key pair
+    - Invalidates all caches so new key is picked up immediately
     """
     db = set_db_session()
     try:
@@ -47,6 +51,11 @@ def rotate_jwt_keys():
         db.add(new_key)
         db.commit()
         print(f"✅ New key generated and inserted: {kid}")
+
+        # ✅ Invalidate all caches so new key is picked up immediately
+        invalidate_jwks_cache()   # clears JWKS endpoint cache
+        reset_oidc_validator()    # clears internal validation cache
+
     except Exception as e:
         db.rollback()
         print(f"❌ Error rotating keys: {e}")

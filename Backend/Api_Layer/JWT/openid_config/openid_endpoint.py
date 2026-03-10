@@ -1,27 +1,53 @@
 # Backend/Api_Layer/JWT/openid_config/openid_endpoint.py
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import json
+import time
 from pathlib import Path
+from jwcrypto import jwk
 from Backend.config.env_loader import get_env_var
 from ..jwt_validator.middleware.permission_utils import check_permission
 from Backend.Api_Layer.interfaces.auth import PermissionCheck
-from fastapi import Request
 from ..jwt_validator.auth.jwt_validator import validate_jwt_token
+from Backend.Api_Layer.JWT.token_creation.config import get_active_public_key
+from Backend.Business_Layer.utils.jwt_encode import decrypt_key
+
 router = APIRouter()
+#### Loading from Json file ####
+# # Static path to JWKS file
+# JWKS_PATH = Path(__file__).resolve().parent.parent / "token_creation" / "jwks.json"
 
-# Static path to JWKS file
-JWKS_PATH = Path(__file__).resolve().parent.parent / "token_creation" / "jwks.json"
+# # Replace with your actual domain name or environment variable
+# ISSUER = get_env_var("ISSUER")
 
-# Replace with your actual domain name or environment variable
+# @router.get("/.well-known/jwks.json")
+# def serve_jwks():
+#     with open(JWKS_PATH, "r") as f:
+#         jwks = json.load(f)
+#     return JSONResponse(content=jwks)
+
 ISSUER = get_env_var("ISSUER")
+
+#### Fetching public key from DB ####
 
 @router.get("/.well-known/jwks.json")
 def serve_jwks():
-    with open(JWKS_PATH, "r") as f:
-        jwks = json.load(f)
-    return JSONResponse(content=jwks)
+    print("Serving JWKS..")
+    try:
+        private_pem, public_pem, algorithm, kid = get_active_public_key()
+        decrypted_public = decrypt_key(public_pem)
 
+        key = jwk.JWK.from_pem(decrypted_public.encode("utf-8"))
+        key_dict = json.loads(key.export_public())
+        key_dict["use"] = "sig"
+        key_dict["alg"] = algorithm
+        key_dict["kid"] = kid
+
+        return JSONResponse(content={"keys": [key_dict]})
+
+    except Exception as e:
+        print(f"❌ Failed to serve JWKS: {e}")
+        return JSONResponse(status_code=500, content={"detail": "Failed to load JWKS"})
 @router.get("/.well-known/openid-configuration")
 def openid_config():
     config = {
@@ -33,6 +59,8 @@ def openid_config():
         "subject_types_supported": ["public"]
     }
     return JSONResponse(content=config)
+
+
 @router.post("/middleware/check-permission")
 async def permission_check_endpoint(request: Request, data: PermissionCheck):
     try:
@@ -41,31 +69,27 @@ async def permission_check_endpoint(request: Request, data: PermissionCheck):
         print(f"📍 Path: {request.url.path}")
         print(f"📍 Client IP: {request.client.host if request.client else 'Unknown'}")
         print(f"📥 Data: path={data.path}, method={data.method}")
-        
-        # Check if user data exists
+
         if not hasattr(request.state, "user") or request.state.user is None:
             print("❌ No user data in request.state")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Unauthorized - no user data"}
             )
-        
+
         token_data = request.state.user
-        # print(f"👤 User data: {token_data}")
-        
-        # Get DB session if available
         db = getattr(request.state, "db", None)
         print(f"💾 DB session: {'Available' if db else 'Not available'}")
-        
+
         response = check_permission(data.path, data.method, token_data, db_session=db)
-        
+
         if isinstance(response, JSONResponse):
             print(f"❌ Permission denied")
             return response
-        
+
         print(f"✅ Permission granted")
         return {"allowed": True}
-        
+
     except Exception as e:
         print(f"💥 ERROR in permission_check_endpoint: {e}")
         import traceback
@@ -74,6 +98,7 @@ async def permission_check_endpoint(request: Request, data: PermissionCheck):
             status_code=500,
             content={"detail": f"Internal error: {str(e)}"}
         )
+
 
 @router.get("/middleware/check-permission")
 async def permission_check_get_handler(request: Request):

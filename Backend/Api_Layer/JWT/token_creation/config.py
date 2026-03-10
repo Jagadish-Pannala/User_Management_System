@@ -11,6 +11,9 @@ _cached_keys = None
 _cache_expiry = 0
 CACHE_TTL_SECONDS = 300  # re-fetch from DB every 5 minutes
 
+# For JWKS serving (get_active_public_key)
+_jwks_cached_keys = None
+_jwks_cache_expiry = 0
 def get_jwt_keys(db=None):
     """
     Returns active JWT keys. Uses in-memory cache to avoid
@@ -71,3 +74,50 @@ def get_jwt_keys(db=None):
     print("✅ JWT keys cached for 5 minutes")
 
     return _cached_keys
+def get_active_public_key(db=None):
+    """
+    Fetch active public key for JWKS serving.
+    Does NOT rotate — just raises error if no key found.
+    Used by /.well-known/jwks.json endpoint only.
+    """
+    global _jwks_cached_keys, _jwks_cache_expiry
+
+    # Use cache if valid
+    if _jwks_cached_keys and time.time() < _jwks_cache_expiry:
+        print("Using cached public key")
+        return _jwks_cached_keys
+
+    if db is None:
+        db = get_db_session()
+    now = func.now()
+
+    key_record = (
+        db.query(JWTKeys)
+        .filter(
+            and_(
+                JWTKeys.is_active == True,
+                JWTKeys.expires_at > now
+            )
+        )
+        .order_by(JWTKeys.created_at.desc())
+        .first()
+    )
+    print("public key fetched from db")
+
+    if not key_record:
+        raise Exception("No active JWT key found in DB")  # ← no rotation, just fail
+
+    _jwks_cached_keys = (
+        key_record.private_key,
+        key_record.public_key,
+        key_record.algorithm,
+        key_record.kid
+    )
+    _jwks_cache_expiry = time.time() + CACHE_TTL_SECONDS
+    return _jwks_cached_keys
+# config.py
+def invalidate_jwks_cache():
+    global _jwks_cached_keys, _jwks_cache_expiry
+    _jwks_cached_keys = None
+    _jwks_cache_expiry = 0
+    print("🔄 JWKS cache invalidated")
