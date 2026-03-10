@@ -27,36 +27,46 @@ class AuthDAO:
         ).first()
     
     def get_user_login_data(self, email: str):
-        """
-        Single query to get user + roles + permissions for login.
-        Replaces 4 separate queries with 1 joined query.
-        """
-        # Step 1: Get user first (need to verify exists + get password)
+        print("email in get_user_login_data", email)
+        
+        # Step 1: Get user
         user = self.db.query(models.User).filter(
             models.User.mail == email,
             models.User.is_active == True
         ).first()
 
         if not user:
+            print("User not found in get_user_login_data")
             return None, [], []
 
-        # Step 2: Roles + permissions in one joined query
-        results = (
-            self.db.query(
-                models.Role.role_name,
-                models.Permissions.permission_code
-            )
+        print("user details", user.user_id)
+
+        # Step 2: Get roles (simple join — always works even if no permissions)
+        role_results = (
+            self.db.query(models.Role.role_name)
             .join(models.User_Role, models.User_Role.role_id == models.Role.role_id)
-            .join(models.Role_Permission_Group, models.Role_Permission_Group.role_id == models.Role.role_id)
-            .join(models.Permission_Group_Mapping, models.Permission_Group_Mapping.group_id == models.Role_Permission_Group.group_id)
-            .join(models.Permissions, models.Permissions.permission_id == models.Permission_Group_Mapping.permission_id)
             .filter(models.User_Role.user_id == user.user_id)
             .distinct()
             .all()
         )
+        roles = [r.role_name for r in role_results]
+        print("roles in get_user_login_data", roles)
 
-        roles = list({r.role_name for r in results})
-        permissions = list({r.permission_code for r in results})
+        # Step 3: Get permissions (separate query — won't affect roles if empty)
+        permission_results = (
+            self.db.query(models.Permissions.permission_code)
+            .join(models.Permission_Group_Mapping, 
+                models.Permissions.permission_id == models.Permission_Group_Mapping.permission_id)
+            .join(models.Role_Permission_Group, 
+                models.Role_Permission_Group.group_id == models.Permission_Group_Mapping.group_id)
+            .join(models.User_Role, 
+                models.User_Role.role_id == models.Role_Permission_Group.role_id)
+            .filter(models.User_Role.user_id == user.user_id)
+            .distinct()
+            .all()
+        )
+        permissions = [p.permission_code for p in permission_results]
+        print("permissions in get_user_login_data", permissions)
 
         return user, roles, permissions
 
