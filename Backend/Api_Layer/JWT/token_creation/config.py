@@ -1,10 +1,11 @@
 # Backend/Api_Layer/JWT/token_creation/config.py
 
-from Backend.Data_Access_Layer.utils.database import get_db_session
+from Backend.Data_Access_Layer.utils.database import get_db_session, SessionLocal
 from Backend.Data_Access_Layer.models.jwt import JWTKeys
 from sqlalchemy import and_
 from sqlalchemy.sql import func
 import time
+import threading
 
 # ---- Module-level cache ----
 _cached_keys = None
@@ -74,48 +75,54 @@ def get_jwt_keys(db=None):
     print("✅ JWT keys cached for 5 minutes")
 
     return _cached_keys
-def get_active_public_key(db=None):
-    """
-    Fetch active public key for JWKS serving.
-    Does NOT rotate — just raises error if no key found.
-    Used by /.well-known/jwks.json endpoint only.
-    """
+
+_jwks_fetch_lock = threading.Lock()
+def get_active_public_key():
     global _jwks_cached_keys, _jwks_cache_expiry
 
-    # Use cache if valid
     if _jwks_cached_keys and time.time() < _jwks_cache_expiry:
         print("Using cached public key")
         return _jwks_cached_keys
 
-    if db is None:
-        db = get_db_session()
-    now = func.now()
+    # ✅ Only one thread fetches DB, others wait for cache
+    with _jwks_fetch_lock:
+        # Double check after acquiring lock
+        if _jwks_cached_keys and time.time() < _jwks_cache_expiry:
+            print("Using cached public key")
+            return _jwks_cached_keys
 
-    key_record = (
-        db.query(JWTKeys)
-        .filter(
-            and_(
-                JWTKeys.is_active == True,
-                JWTKeys.expires_at > now
+        # ✅ Create own session — not relying on middleware
+        db = SessionLocal()
+        try:
+            now = func.now()
+            key_record = (
+                db.query(JWTKeys)
+                .filter(
+                    and_(
+                        JWTKeys.is_active == True,
+                        JWTKeys.expires_at > now
+                    )
+                )
+                .order_by(JWTKeys.created_at.desc())
+                .first()
             )
-        )
-        .order_by(JWTKeys.created_at.desc())
-        .first()
-    )
-    print("public key fetched from db")
 
-    if not key_record:
-        raise Exception("No active JWT key found in DB")  # ← no rotation, just fail
+            if not key_record:
+                raise Exception("No active JWT key found in DB")
 
-    _jwks_cached_keys = (
-        key_record.private_key,
-        key_record.public_key,
-        key_record.algorithm,
-        key_record.kid
-    )
-    _jwks_cache_expiry = time.time() + CACHE_TTL_SECONDS
-    return _jwks_cached_keys
-# config.py
+            _jwks_cached_keys = (
+                key_record.private_key,
+                key_record.public_key,
+                key_record.algorithm,
+                key_record.kid
+            )
+            _jwks_cache_expiry = time.time() + CACHE_TTL_SECONDS
+            print("✅ Public key fetched from DB and cached")
+            return _jwks_cached_keys
+
+        finally:
+            db.close()  # always close own session# config.py
+        
 def invalidate_jwks_cache():
     global _jwks_cached_keys, _jwks_cache_expiry
     _jwks_cached_keys = None
