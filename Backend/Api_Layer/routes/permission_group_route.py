@@ -8,7 +8,6 @@ from ..interfaces.permissiongroup import (
     GroupIn
 )
 from ...Business_Layer.services.permission_group_service import PermissionGroupService
-from ...Business_Layer.utils.permission_check import permission_required
 from ..interfaces.permission_management import PermissionOut
 
 router = APIRouter()
@@ -31,7 +30,7 @@ def get_unmapped_groups(request: Request):
 # -------------------------------------------------------
 # Home
 # -------------------------------------------------------
-@router.get("/", dependencies=[Depends(permission_required)])
+@router.get("/")
 def admin_home():
     return {"message": "Group Management Route"}
 

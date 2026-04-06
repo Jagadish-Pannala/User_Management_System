@@ -20,6 +20,7 @@ def validate_jwt_token(token: str):
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
         print(f"Token header 'kid': {kid}")
+        print("Issuer form OIDC", validator.issuer, "Issuer from token", jwt.decode(token, options={"verify_signature": False}).get("iss"))
         
         # ✅ FIXED: Use get_signing_key() instead of direct cache access
         # This method automatically reloads JWKS if KID not found
