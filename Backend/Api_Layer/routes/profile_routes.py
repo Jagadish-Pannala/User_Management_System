@@ -86,6 +86,5 @@ def update_user_by_id(
 
     # Condition 3: Deny access
     raise HTTPException(
-        status_code=403,
-        detail="You are not authorized to edit this profile."
+        status_code=403, detail="You are not authorized to edit this profile."
     )

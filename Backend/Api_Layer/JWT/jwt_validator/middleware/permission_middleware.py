@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from .permission_utils import check_permission
 import time
 
+
 class OptimizedPermissionMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):

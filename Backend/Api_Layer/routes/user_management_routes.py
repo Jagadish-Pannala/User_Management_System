@@ -1,10 +1,13 @@
-from fastapi import (
-    APIRouter, UploadFile, File, Depends, HTTPException, Request, Query
-)
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request, Query
 from sqlalchemy.orm import Session
 from ..interfaces.user_management import (
-    UserOut, UserRoleUpdate, UserBaseIn, UserOut_uuid,
-    UserWithRoleNames_id, PaginatedUserResponse, PaginatedUserWithRolesResponse
+    UserOut,
+    UserRoleUpdate,
+    UserBaseIn,
+    UserOut_uuid,
+    UserWithRoleNames_id,
+    PaginatedUserResponse,
+    PaginatedUserWithRolesResponse,
 )
 from ...Business_Layer.services.user_management_service import UserService
 import pandas as pd
@@ -16,6 +19,7 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 # ------------------------------------------------------------------------------
 # Inject service from request middleware session
 # ------------------------------------------------------------------------------
@@ -23,12 +27,14 @@ def get_user_service(request: Request) -> UserService:
     """Inject UserService with DB session from middleware"""
     return UserService(request.state.db)
 
+
 # ------------------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------------------
 @router.get("/")
 def admin_home():
     return {"message": "User Management Route"}
+
 
 # ------------------------------------------------------------------------------
 # Count APIs
@@ -53,7 +59,7 @@ def list_users(
     request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(50, le=500),
-    search: Optional[str] = Query(None)
+    search: Optional[str] = Query(None),
 ):
     start = time.perf_counter()
     logger.info(f"🔵 [list_users] page={page}, limit={limit}, search={search}")
@@ -63,7 +69,11 @@ def list_users(
         result = service.list_users(page, limit, search)
         elapsed = (time.perf_counter() - start) * 1000
         msg = f"✅ [list_users] completed in {elapsed:.2f}ms"
-        logger.warning(f"⚠️ SLOW ENDPOINT: {msg}") if elapsed > 500 else logger.debug(msg)
+        (
+            logger.warning(f"⚠️ SLOW ENDPOINT: {msg}")
+            if elapsed > 500
+            else logger.debug(msg)
+        )
         return result
     except Exception as e:
         elapsed = (time.perf_counter() - start) * 1000
@@ -79,7 +89,7 @@ def get_users_with_roles(
     request: Request,
     page: int = Query(1, ge=1),
     limit: int = Query(10, le=100),
-    search: Optional[str] = Query(None)
+    search: Optional[str] = Query(None),
 ):
     return get_user_service(request).get_users_with_roles(page, limit, search)
 
@@ -122,7 +132,7 @@ def create_user(user: UserBaseIn, request: Request):
             user,
             created_by_user_id=current_user["user_id"],
             current_user=current_user,
-            request=request
+            request=request,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -139,13 +149,11 @@ async def bulk_create_users(request: Request, file: UploadFile = File(...)):
         if not required_cols.issubset(df.columns):
             raise HTTPException(
                 status_code=400,
-                detail=f"Missing required columns. Expected: {', '.join(required_cols)}"
+                detail=f"Missing required columns. Expected: {', '.join(required_cols)}",
             )
 
         return service.create_bulk_user(
-            df,
-            created_by_user_id=request.state.user["user_id"],
-            request=request
+            df, created_by_user_id=request.state.user["user_id"], request=request
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -159,9 +167,7 @@ def update_user(user_id: int, user: UserBaseIn, request: Request):
     service = get_user_service(request)
     try:
         return service.update_user(
-            user_id, user,
-            current_user=request.state.user,
-            request=request
+            user_id, user, current_user=request.state.user, request=request
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -172,9 +178,7 @@ def update_user_uuid(user_uuid: str, user: UserBaseIn, request: Request):
     service = get_user_service(request)
     try:
         return service.update_user_uuid(
-            user_uuid, user,
-            current_user=request.state.user,
-            request=request
+            user_uuid, user, current_user=request.state.user, request=request
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -188,9 +192,7 @@ def deactivate_user(user_id: int, request: Request):
     service = get_user_service(request)
     try:
         service.deactivate_user(
-            user_id,
-            current_user=request.state.user,
-            request=request
+            user_id, current_user=request.state.user, request=request
         )
         return {"message": "User deactivated successfully"}
     except ValueError as e:
@@ -202,9 +204,7 @@ def deactivate_user_uuid(user_uuid: str, request: Request):
     service = get_user_service(request)
     try:
         service.deactivate_user_uuid(
-            user_uuid,
-            current_user=request.state.user,
-            request=request
+            user_uuid, current_user=request.state.user, request=request
         )
         return {"message": "User deactivated successfully"}
     except ValueError as e:
@@ -216,9 +216,7 @@ def activate_user_uuid(user_uuid: str, request: Request):
     service = get_user_service(request)
     try:
         service.activate_user_uuid(
-            user_uuid,
-            current_user=request.state.user,
-            request=request
+            user_uuid, current_user=request.state.user, request=request
         )
         return {"message": "User activated successfully"}
     except ValueError as e:
@@ -238,7 +236,7 @@ def update_user_roles(user_id: int, payload: UserRoleUpdate, request: Request):
             payload.role_ids,
             current_user["user_id"],
             current_user=current_user,
-            request=request
+            request=request,
         )
         return {"message": message}
     except ValueError as e:
@@ -257,7 +255,7 @@ def update_user_roles_uuid(user_uuid: str, payload: UserRoleUpdate, request: Req
             payload.role_ids,
             current_user["user_id"],
             current_user=current_user,
-            request=request
+            request=request,
         )
         return {"message": message}
     except ValueError as e:

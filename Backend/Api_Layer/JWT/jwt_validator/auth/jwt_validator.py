@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from .....Business_Layer.utils.token_blacklist import is_token_blacklisted
 from .oidc_config import get_oidc_validator
 
+
 def validate_jwt_token(token: str):
     """
     Validates JWT using OIDC (public keys).
@@ -20,8 +21,13 @@ def validate_jwt_token(token: str):
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
         print(f"Token header 'kid': {kid}")
-        print("Issuer form OIDC", validator.issuer, "Issuer from token", jwt.decode(token, options={"verify_signature": False}).get("iss"))
-        
+        print(
+            "Issuer form OIDC",
+            validator.issuer,
+            "Issuer from token",
+            jwt.decode(token, options={"verify_signature": False}).get("iss"),
+        )
+
         # ✅ FIXED: Use get_signing_key() instead of direct cache access
         # This method automatically reloads JWKS if KID not found
         try:
@@ -39,7 +45,7 @@ def validate_jwt_token(token: str):
             key=key,
             algorithms=["RS256"],
             audience=None,  # Set if needed
-            issuer=validator.issuer
+            issuer=validator.issuer,
         )
 
         # Check if token is blacklisted
@@ -51,9 +57,11 @@ def validate_jwt_token(token: str):
         except HTTPException:
             raise  # re-raise the revoked token exception
         except Exception as e:
-            print(f"⚠️ Blacklist check error (ignored): {e}")  # Redis down, allow request
+            print(
+                f"⚠️ Blacklist check error (ignored): {e}"
+            )  # Redis down, allow request
         return decoded
-        
+
     except jwt.ExpiredSignatureError:
         print("⏰ Token expired")
         raise HTTPException(status_code=401, detail="Token has expired")

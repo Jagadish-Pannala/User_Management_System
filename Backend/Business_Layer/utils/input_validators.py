@@ -5,11 +5,10 @@ from sqlalchemy.orm import Session
 
 def validate_email_format(email: str):
     """Validate the format of the email using regex."""
-    email_regex = r'^[\w\.-]+@[\w\.-]+\.\w{2,}$'  # more flexible TLD length
+    email_regex = r"^[\w\.-]+@[\w\.-]+\.\w{2,}$"  # more flexible TLD length
     if not re.match(email_regex, email):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email format"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email format"
         )
 
 
@@ -25,31 +24,31 @@ def validate_password_strength(password: str):
     if len(password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long"
+            detail="Password must be at least 8 characters long",
         )
 
-    if not re.search(r'[A-Z]', password):
+    if not re.search(r"[A-Z]", password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least one uppercase letter"
+            detail="Password must contain at least one uppercase letter",
         )
 
-    if not re.search(r'[a-z]', password):
+    if not re.search(r"[a-z]", password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least one lowercase letter"
+            detail="Password must contain at least one lowercase letter",
         )
 
-    if not re.search(r'\d', password):
+    if not re.search(r"\d", password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least one digit"
+            detail="Password must contain at least one digit",
         )
 
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain at least one special character"
+            detail="Password must contain at least one special character",
         )
 
 
@@ -59,11 +58,11 @@ def validate_contact_number(contact: str):
     - Allows optional '+' prefix
     - 7 to 15 digits
     """
-    contact_regex = r'^\+?\d{7,15}$'
+    contact_regex = r"^\+?\d{7,15}$"
     if not re.match(contact_regex, contact):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid contact number format"
+            detail="Invalid contact number format",
         )
 
 
@@ -77,5 +76,5 @@ def validate_name(name: str):
     if not re.match(name_regex, name):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid name format. Only letters, spaces, hyphens, and apostrophes are allowed."
+            detail="Invalid name format. Only letters, spaces, hyphens, and apostrophes are allowed.",
         )

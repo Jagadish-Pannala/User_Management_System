@@ -29,7 +29,9 @@ def get_role_by_uuid(role_uuid: str, service: RoleService = Depends(get_role_ser
 
 
 @router.post("", response_model=RoleOut)
-def create_role(role: RoleBase, request: Request, service: RoleService = Depends(get_role_service)):
+def create_role(
+    role: RoleBase, request: Request, service: RoleService = Depends(get_role_service)
+):
     return service.create_role(role, current_user=request.state.user, request=request)
 
 
@@ -58,12 +60,16 @@ def delete_role_by_uuid(
 
 # --- Permission Group Management for Roles ---
 @router.get("/uuid/{role_uuid}/permissions")
-def get_permissions_by_role(role_uuid: str, service: RoleService = Depends(get_role_service)):
+def get_permissions_by_role(
+    role_uuid: str, service: RoleService = Depends(get_role_service)
+):
     return service.get_permissions_by_role_uuid(role_uuid)
 
 
 @router.get("/uuid/{role_uuid}/groups", response_model=List[Group])
-def get_permission_groups_by_role(role_uuid: str, service: RoleService = Depends(get_role_service)):
+def get_permission_groups_by_role(
+    role_uuid: str, service: RoleService = Depends(get_role_service)
+):
     return service.get_permission_groups_by_role_uuid(role_uuid)
 
 

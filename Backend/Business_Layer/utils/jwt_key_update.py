@@ -23,7 +23,9 @@ def rotate_jwt_keys():
         fernet = Fernet(fernet_key)
 
         # Delete expired keys
-        deleted_result = db.execute(delete(JWTKeys).where(JWTKeys.expires_at < datetime.utcnow()))
+        deleted_result = db.execute(
+            delete(JWTKeys).where(JWTKeys.expires_at < datetime.utcnow())
+        )
         deleted_count = deleted_result.rowcount or 0
         print(f"🗑️ Deleted {deleted_count} expired keys.")
 
@@ -46,15 +48,15 @@ def rotate_jwt_keys():
             public_key=encrypted_public,
             algorithm="RS256",
             is_active=True,
-            expires_at=datetime.utcnow() + timedelta(days=3)
+            expires_at=datetime.utcnow() + timedelta(days=3),
         )
         db.add(new_key)
         db.commit()
         print(f"✅ New key generated and inserted: {kid}")
 
         # ✅ Invalidate all caches so new key is picked up immediately
-        invalidate_jwks_cache()   # clears JWKS endpoint cache
-        reset_oidc_validator()    # clears internal validation cache
+        invalidate_jwks_cache()  # clears JWKS endpoint cache
+        reset_oidc_validator()  # clears internal validation cache
 
     except Exception as e:
         db.rollback()

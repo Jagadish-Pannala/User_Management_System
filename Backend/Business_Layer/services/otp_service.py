@@ -8,6 +8,7 @@ from ...Data_Access_Layer.utils.dependency import get_db
 from ..utils.input_validators import validate_email_format, validate_password_strength
 from fastapi import HTTPException, status
 
+
 def send_otp_service(email: str):
     db: Session = next(get_db())  # Single DB session for entire function
     dao = AuthDAO(db)
@@ -19,8 +20,7 @@ def send_otp_service(email: str):
     user = dao.get_user_by_email(email)
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found or inactive"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found or inactive"
         )
 
     # 3. Remove existing OTPs for this email
@@ -39,6 +39,7 @@ def send_otp_service(email: str):
     send_otp_email(email, otp)
 
     return {"message": "OTP sent successfully"}
+
 
 def validate_otp_service(email: str, otp: str):
     db: Session = SessionLocal()

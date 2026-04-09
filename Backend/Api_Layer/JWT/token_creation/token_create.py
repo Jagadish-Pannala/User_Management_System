@@ -17,12 +17,14 @@ _algorithm = None
 _kid = None
 _keys_loaded_at = 0  # timestamp, not bool
 
+
 def get_issuer_from_request(request) -> str:
     scheme = request.url.scheme
     host = request.headers.get("host")
     issuer = f"{scheme}://{host}"
     print("Determined Issuer from request:", issuer)
     return issuer
+
 
 def _load_keys(db=None):
     global _private_key, _public_key, _algorithm, _kid, _keys_loaded_at
@@ -36,6 +38,7 @@ def _load_keys(db=None):
     _public_key = decrypt_key(public_key_enc)
     _keys_loaded_at = time.time()
     print("✅ JWT keys decrypted and cached in memory")
+
 
 def token_create(token_data: dict, request=None, issuer=None, db=None) -> str:
     _load_keys(db=db)
@@ -56,7 +59,9 @@ def token_create(token_data: dict, request=None, issuer=None, db=None) -> str:
         "roles": token_data["roles"],
         "permissions": token_data["permissions"],
         "iss": issuer,
-        "exp": expire
+        "exp": expire,
     }
 
-    return jwt.encode(payload, _private_key, algorithm=_algorithm, headers={"kid": _kid})
+    return jwt.encode(
+        payload, _private_key, algorithm=_algorithm, headers={"kid": _kid}
+    )

@@ -21,19 +21,21 @@ class AuthDAO:
         return self.db.query(models.User).filter_by(mail=email).first()
 
     def get_active_user_by_email(self, email: str) -> Optional[models.User]:
-        return self.db.query(models.User).filter(
-            models.User.mail == email,
-            models.User.is_active == True
-        ).first()
-    
+        return (
+            self.db.query(models.User)
+            .filter(models.User.mail == email, models.User.is_active == True)
+            .first()
+        )
+
     def get_user_login_data(self, email: str):
         print("email in get_user_login_data", email)
-        
+
         # Step 1: Get user
-        user = self.db.query(models.User).filter(
-            models.User.mail == email,
-            models.User.is_active == True
-        ).first()
+        user = (
+            self.db.query(models.User)
+            .filter(models.User.mail == email, models.User.is_active == True)
+            .first()
+        )
 
         if not user:
             print("User not found in get_user_login_data")
@@ -55,12 +57,20 @@ class AuthDAO:
         # Step 3: Get permissions (separate query — won't affect roles if empty)
         permission_results = (
             self.db.query(models.Permissions.permission_code)
-            .join(models.Permission_Group_Mapping, 
-                models.Permissions.permission_id == models.Permission_Group_Mapping.permission_id)
-            .join(models.Role_Permission_Group, 
-                models.Role_Permission_Group.group_id == models.Permission_Group_Mapping.group_id)
-            .join(models.User_Role, 
-                models.User_Role.role_id == models.Role_Permission_Group.role_id)
+            .join(
+                models.Permission_Group_Mapping,
+                models.Permissions.permission_id
+                == models.Permission_Group_Mapping.permission_id,
+            )
+            .join(
+                models.Role_Permission_Group,
+                models.Role_Permission_Group.group_id
+                == models.Permission_Group_Mapping.group_id,
+            )
+            .join(
+                models.User_Role,
+                models.User_Role.role_id == models.Role_Permission_Group.role_id,
+            )
             .filter(models.User_Role.user_id == user.user_id)
             .distinct()
             .all()
@@ -70,7 +80,6 @@ class AuthDAO:
 
         return user, roles, permissions
 
-    
     def update_last_login(self, user_id: int, ip: str):
         user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
         if not user:
@@ -78,14 +87,16 @@ class AuthDAO:
 
         user.last_login_at = datetime.utcnow()
         user.last_login_ip = ip
-        print(f"Updated last login for user_id {user_id} to {user.last_login_at} from IP {ip}")
+        print(
+            f"Updated last login for user_id {user_id} to {user.last_login_at} from IP {ip}"
+        )
         self.db.commit()
-    
+
     def check_user_first_login(self, user_id: int) -> bool:
         user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         if user.last_login_at is None or user.password_last_updated is None:
             return True
         return False
@@ -96,7 +107,7 @@ class AuthDAO:
             last_name=user_data.last_name,
             mail=user_data.mail,
             contact=user_data.contact,
-            password=hashed_password
+            password=hashed_password,
         )
         self.db.add(new_user)
         self.db.commit()
@@ -115,7 +126,7 @@ class AuthDAO:
         except SQLAlchemyError:
             self.db.rollback()
             return False
-    
+
     def password_last_updated(self, user_id: int) -> None:
         user = self.db.query(models.User).filter(models.User.user_id == user_id).first()
         if not user:
@@ -127,7 +138,9 @@ class AuthDAO:
         self.db.commit()
         self.db.refresh(user)
 
-    def update_user_password_by_mail(self, user_mail: str, new_hashed_password: str) -> bool:
+    def update_user_password_by_mail(
+        self, user_mail: str, new_hashed_password: str
+    ) -> bool:
         user = self.db.query(models.User).filter(models.User.mail == user_mail).first()
         if user:
             return self.update_user_password(user, new_hashed_password)
@@ -146,9 +159,12 @@ class AuthDAO:
         self.db.commit()
 
     def get_user_roles(self, user_id: int) -> list[str]:
-        result = self.db.query(models.Role.role_name).join(models.User_Role).filter(
-            models.User_Role.user_id == user_id
-        ).all()
+        result = (
+            self.db.query(models.Role.role_name)
+            .join(models.User_Role)
+            .filter(models.User_Role.user_id == user_id)
+            .all()
+        )
         return [r[0] for r in result]
 
     # --------------------------
@@ -156,30 +172,54 @@ class AuthDAO:
     # --------------------------
 
     def get_permission_group_ids_for_user(self, user_id: int) -> list[int]:
-        result = self.db.query(models.Role_Permission_Group.group_id).join(
-            models.User_Role, models.User_Role.role_id == models.Role_Permission_Group.role_id
-        ).filter(models.User_Role.user_id == user_id).distinct().all()
+        result = (
+            self.db.query(models.Role_Permission_Group.group_id)
+            .join(
+                models.User_Role,
+                models.User_Role.role_id == models.Role_Permission_Group.role_id,
+            )
+            .filter(models.User_Role.user_id == user_id)
+            .distinct()
+            .all()
+        )
         return [g[0] for g in result]
 
     def get_permissions_by_group_ids(self, group_ids: list[int]) -> list[str]:
         if not group_ids:
             return []
 
-        result = self.db.query(models.Permissions.permission_code).join(
-            models.Permission_Group_Mapping,
-            models.Permissions.permission_id == models.Permission_Group_Mapping.permission_id
-        ).filter(models.Permission_Group_Mapping.group_id.in_(group_ids)).distinct().all()
+        result = (
+            self.db.query(models.Permissions.permission_code)
+            .join(
+                models.Permission_Group_Mapping,
+                models.Permissions.permission_id
+                == models.Permission_Group_Mapping.permission_id,
+            )
+            .filter(models.Permission_Group_Mapping.group_id.in_(group_ids))
+            .distinct()
+            .all()
+        )
 
         return [p[0] for p in result]
 
     def get_access_point(self, path: str, method: str) -> Optional[models.AccessPoint]:
-        return self.db.query(models.AccessPoint).filter_by(endpoint_path=path, method=method).first()
+        return (
+            self.db.query(models.AccessPoint)
+            .filter_by(endpoint_path=path, method=method)
+            .first()
+        )
 
     def get_permission_codes_for_access_point(self, access_id: int) -> list[str]:
-        result = self.db.query(models.Permissions.permission_code).join(
-            models.AccessPointPermission,
-            models.Permissions.permission_code == models.AccessPointPermission.permission_code
-        ).filter(models.AccessPointPermission.access_id == access_id).all()
+        result = (
+            self.db.query(models.Permissions.permission_code)
+            .join(
+                models.AccessPointPermission,
+                models.Permissions.permission_code
+                == models.AccessPointPermission.permission_code,
+            )
+            .filter(models.AccessPointPermission.access_id == access_id)
+            .all()
+        )
         return [p[0] for p in result]
 
     def get_user_permissions(self, user_id: int) -> list[str]:
@@ -187,11 +227,13 @@ class AuthDAO:
         return self.get_permissions_by_group_ids(group_ids)
 
     def get_valid_otp(self, email: str, otp: str) -> Optional[OTP]:
-        return self.db.query(OTP).filter(
-            OTP.email == email,
-            OTP.otp == otp,
-            OTP.expires_at > datetime.utcnow()
-        ).first()
+        return (
+            self.db.query(OTP)
+            .filter(
+                OTP.email == email, OTP.otp == otp, OTP.expires_at > datetime.utcnow()
+            )
+            .first()
+        )
 
     def delete_otp(self, otp_record: OTP):
         self.db.delete(otp_record)

@@ -13,37 +13,61 @@ class PermissionDAO:
         return self.db.query(models.Permissions).all()
 
     def get_by_id(self, permission_id: int):
-        return self.db.query(models.Permissions).filter_by(permission_id=permission_id).first()
-    
+        return (
+            self.db.query(models.Permissions)
+            .filter_by(permission_id=permission_id)
+            .first()
+        )
+
     def get_by_uuid(self, permission_uuid: str):
-        return self.db.query(models.Permissions).filter_by(permission_uuid=permission_uuid).first()
+        return (
+            self.db.query(models.Permissions)
+            .filter_by(permission_uuid=permission_uuid)
+            .first()
+        )
 
     def get_by_code(self, code: str):
         return self.db.query(models.Permissions).filter_by(permission_code=code).first()
 
     def get_unmapped(self):
-        return self.db.query(models.Permissions).filter(
-            ~models.Permissions.permission_id.in_(
-                self.db.query(models.Permission_Group_Mapping.permission_id)
+        return (
+            self.db.query(models.Permissions)
+            .filter(
+                ~models.Permissions.permission_id.in_(
+                    self.db.query(models.Permission_Group_Mapping.permission_id)
+                )
             )
-        ).all()
+            .all()
+        )
 
     def create(self, permission_code: str, description: str, permission_uuid: str):
         now = datetime.utcnow()
-        permission = models.Permissions(permission_code=permission_code, description=description, permission_uuid=permission_uuid, created_at=now, updated_at=now)
+        permission = models.Permissions(
+            permission_code=permission_code,
+            description=description,
+            permission_uuid=permission_uuid,
+            created_at=now,
+            updated_at=now,
+        )
         self.db.add(permission)
         self.db.commit()
         self.db.refresh(permission)
         return permission
 
-    def delete(self, permission:models.Permissions):
+    def delete(self, permission: models.Permissions):
         self.db.delete(permission)
         self.db.commit()
 
     def delete_cascade(self, permission_id: int):
-        self.db.query(models.Permission_Group_Mapping).filter_by(permission_id=permission_id).delete()
-        self.db.query(models.AccessPointPermission).filter_by(permission_code=self.get_by_id(permission_id).permission_code).delete()
-        self.db.query(models.Permissions).filter_by(permission_id=permission_id).delete()
+        self.db.query(models.Permission_Group_Mapping).filter_by(
+            permission_id=permission_id
+        ).delete()
+        self.db.query(models.AccessPointPermission).filter_by(
+            permission_code=self.get_by_id(permission_id).permission_code
+        ).delete()
+        self.db.query(models.Permissions).filter_by(
+            permission_id=permission_id
+        ).delete()
         self.db.commit()
 
     def update(self, permission, code: str, desc: str):
@@ -51,15 +75,16 @@ class PermissionDAO:
 
         # Update dependent table: AccessPointPermission
         if old_code != code:
-            existing = self.db.query(models.Permissions)\
-                .filter(models.Permissions.permission_code == code)\
-                .filter(models.Permissions.permission_id != permission.permission_id)\
+            existing = (
+                self.db.query(models.Permissions)
+                .filter(models.Permissions.permission_code == code)
+                .filter(models.Permissions.permission_id != permission.permission_id)
                 .first()
-            
+            )
+
             if existing:
                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Permission code '{code}' already exists"
+                    status_code=400, detail=f"Permission code '{code}' already exists"
                 )
 
         # Update Permissions table
@@ -70,21 +95,31 @@ class PermissionDAO:
         self.db.commit()
         self.db.refresh(permission)
         return permission
-    
-    
-
 
     def update_group_mapping(self, permission_id: int, group_id: int):
-        self.db.query(models.Permission_Group_Mapping).filter_by(permission_id=permission_id).delete()
-        self.db.add(models.Permission_Group_Mapping(permission_id=permission_id, group_id=group_id))
+        self.db.query(models.Permission_Group_Mapping).filter_by(
+            permission_id=permission_id
+        ).delete()
+        self.db.add(
+            models.Permission_Group_Mapping(
+                permission_id=permission_id, group_id=group_id
+            )
+        )
         self.db.commit()
 
     def map_to_group(self, permission_id: int, group_id: int):
-        existing = self.db.query(models.Permission_Group_Mapping).filter_by(
-            permission_id=permission_id,
-            group_id=group_id
-        ).first()
+        existing = (
+            self.db.query(models.Permission_Group_Mapping)
+            .filter_by(permission_id=permission_id, group_id=group_id)
+            .first()
+        )
         if existing:
-            raise ValueError("This permission is already mapped to the specified group.")
-        self.db.add(models.Permission_Group_Mapping(permission_id=permission_id, group_id=group_id))
+            raise ValueError(
+                "This permission is already mapped to the specified group."
+            )
+        self.db.add(
+            models.Permission_Group_Mapping(
+                permission_id=permission_id, group_id=group_id
+            )
+        )
         self.db.commit()

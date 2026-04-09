@@ -3,18 +3,9 @@ from typing import Optional, Literal, List
 from uuid import UUID
 from datetime import datetime
 
-
 # Define all supported HTTP methods
 HttpMethod = Literal[
-    "GET",
-    "POST",
-    "PUT",
-    "DELETE",
-    "PATCH",
-    "HEAD",
-    "OPTIONS",
-    "TRACE",
-    "CONNECT"
+    "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "CONNECT"
 ]
 
 
@@ -50,10 +41,12 @@ class CreateAPResponse(BaseModel):
     access_uuid: str
     message: str
 
+
 class BulkCreateAPResponse(BaseModel):
     summary: dict
     created_access_points: List[CreateAPResponse]
     errors: List[dict]
+
 
 class PermissionMappingIn(BaseModel):
     permission_uuid: str

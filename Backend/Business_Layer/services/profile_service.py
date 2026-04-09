@@ -23,7 +23,7 @@ class ProfileService(BaseService):
             "last_name": user.last_name,
             "email": user.mail,
             "contact": user.contact,
-            "is_active": user.is_active
+            "is_active": user.is_active,
         }
 
     def update_profile(self, profile: EditProfile, current_user: dict):
@@ -34,16 +34,23 @@ class ProfileService(BaseService):
         if profile.password:
             validate_password_strength(profile.password)
 
-        success = self.dao.update_user_profile(user, {
-            "first_name": profile.first_name,
-            "last_name": profile.last_name,
-            "contact": profile.contact,
-            "password": hash_password(profile.password) if profile.password else user.password
-        })
+        success = self.dao.update_user_profile(
+            user,
+            {
+                "first_name": profile.first_name,
+                "last_name": profile.last_name,
+                "contact": profile.contact,
+                "password": (
+                    hash_password(profile.password)
+                    if profile.password
+                    else user.password
+                ),
+            },
+        )
 
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update profile")
-        
+
         self.dao.password_last_updated(user.user_id)
         return {"message": "Profile updated successfully"}
 
@@ -57,7 +64,9 @@ class ProfileService(BaseService):
             excluded_user_ids = self.dao.get_non_admin_user_ids()
             users = self.dao.search_public_users(query, excluded_user_ids)
         else:
-            raise HTTPException(status_code=403, detail="You do not have permission to view users")
+            raise HTTPException(
+                status_code=403, detail="You do not have permission to view users"
+            )
 
         return [
             {
@@ -66,7 +75,9 @@ class ProfileService(BaseService):
                 "email": u.mail,
                 "contact": u.contact,
                 "is_active": u.is_active,
-                "can_edit": True if "VIEW_USER_ALL" in permissions else has_edit_permission
+                "can_edit": (
+                    True if "VIEW_USER_ALL" in permissions else has_edit_permission
+                ),
             }
             for u in users
         ]
@@ -80,14 +91,12 @@ class ProfileService(BaseService):
             admin_ids = self.dao.get_admin_user_ids()
             users = self.dao.search_suggestions_exclude_admins(query, admin_ids)
         else:
-            raise HTTPException(status_code=403, detail="You do not have permission to view suggestions")
+            raise HTTPException(
+                status_code=403, detail="You do not have permission to view suggestions"
+            )
 
         return [
-            {
-                "name": f"{u.first_name} {u.last_name}",
-                "email": u.mail
-            }
-            for u in users
+            {"name": f"{u.first_name} {u.last_name}", "email": u.mail} for u in users
         ]
 
     def get_user_by_id(self, user_id: int, current_user: dict):
@@ -101,20 +110,25 @@ class ProfileService(BaseService):
             "last_name": user.last_name,
             "email": user.mail,
             "contact": user.contact,
-            "is_active": user.is_active
+            "is_active": user.is_active,
         }
 
-    def update_user_by_id(self, user_id: int, profile: EditProfileHr, current_user: dict):
+    def update_user_by_id(
+        self, user_id: int, profile: EditProfileHr, current_user: dict
+    ):
         user = self.dao.get_user_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        success = self.dao.update_user_profile(user, {
-            "first_name": profile.first_name,
-            "last_name": profile.last_name,
-            "contact": profile.contact,
-            "is_active": profile.is_active
-        })
+        success = self.dao.update_user_profile(
+            user,
+            {
+                "first_name": profile.first_name,
+                "last_name": profile.last_name,
+                "contact": profile.contact,
+                "is_active": profile.is_active,
+            },
+        )
 
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update user")

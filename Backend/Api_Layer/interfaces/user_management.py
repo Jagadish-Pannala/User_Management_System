@@ -1,9 +1,10 @@
 from pydantic import BaseModel
-from typing import List,Optional
+from typing import List, Optional
 from datetime import datetime
 
+
 class UserBase(BaseModel):
-    user_uuid: Optional[str] = None 
+    user_uuid: Optional[str] = None
     first_name: str
     last_name: str
     mail: str
@@ -11,14 +12,16 @@ class UserBase(BaseModel):
     password: Optional[str] = None
     is_active: bool = True
 
+
 class UserBaseIn(BaseModel):
-    user_uuid: Optional[str] = None 
+    user_uuid: Optional[str] = None
     first_name: str
     last_name: str
     mail: str
     contact: str
     password: Optional[str] = None
     is_active: bool = True
+
 
 class UserOut(UserBase):
     user_id: int
@@ -34,7 +37,9 @@ class UserOut(UserBase):
 
 class UserOut_uuid(UserBase):
     class Config:
-       from_attributes = True
+        from_attributes = True
+
+
 class UserRoleUpdate(BaseModel):
     role_ids: list[str]
 
@@ -44,25 +49,24 @@ class UserWithRoleNames(BaseModel):
     name: str  # e.g., "John Doe"
     roles: List[str]  # Only role names
     mail: str
-    
 
     class Config:
         from_attributes = True
+
 
 class UserWithRoleNames_id(BaseModel):
     user_id: int
     name: str  # e.g., "John Doe"
     roles: List[str]  # Only role names
     mail: str
-    
 
     class Config:
         from_attributes = True
 
+
 class PaginatedUserResponse(BaseModel):
     total: int
     users: List[UserOut]
-
 
 
 class PaginatedUserWithRolesResponse(BaseModel):
