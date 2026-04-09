@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from ..interfaces.auth import (
     RegisterUser,
@@ -38,7 +38,7 @@ def logout(request: Request):
     token = auth_header.split(" ")[1]
 
     if blacklist_token(token):
-        return {"message": f"User logged out successfully"}
+        return {"message": "User logged out successfully"}
     else:
         raise HTTPException(status_code=500, detail="Logout failed (Redis unavailable)")
 

@@ -19,10 +19,7 @@ from ...Business_Layer.utils.redis_cache import (
     delete_access_point_cache_by_id,
     clear_all_access_point_cache,
     set_access_point_cache,
-    get_access_point_from_cache,
 )
-import json
-import asyncio
 
 
 class AccessPointService:
@@ -183,7 +180,7 @@ class AccessPointService:
 
             # Process each row
             for index, row in df.iterrows():
-                if bool(row["is_public"]) == True or row["is_public"] not in [
+                if bool(row["is_public"]) or row["is_public"] not in [
                     1,
                     "1",
                     True,
@@ -244,7 +241,7 @@ class AccessPointService:
                         }
                     )
 
-                except IntegrityError as e:
+                except IntegrityError:
                     errors.append(
                         {
                             "row": index + 2,
@@ -555,7 +552,7 @@ class AccessPointService:
             )
         self._invalidate_cache(access_point.access_id)
 
-        return {"message": f"Access point  deleted successfully"}
+        return {"message": "Access point  deleted successfully"}
 
     @audit_action_with_request(
         action_type="Update",
@@ -589,7 +586,7 @@ class AccessPointService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found"
             )
-        mapping = self.dao.create_access_permission_mapping(
+        self.dao.create_access_permission_mapping(
             access_id, permission_id, assigned_by=assigned_by
         )
 
@@ -732,7 +729,7 @@ class AccessPointService:
                         continue
 
                     # Create mapping
-                    mapping = self.dao.create_access_permission_mapping(
+                    self.dao.create_access_permission_mapping(
                         access_point.access_id,
                         permission.permission_id,
                         assigned_by=assigned_by,
@@ -794,7 +791,7 @@ class AccessPointService:
                 detail="No mapping found to delete",
             )
         access_uuid = self.dao.get_access_point_by_id(access_id).access_uuid
-        access_point = self.dao.get_access_point_by_path_and_method(access_uuid)
+        self.dao.get_access_point_by_path_and_method(access_uuid)
         self._invalidate_cache(access_id)
         return {"message": "Permission unmapped successfully"}
 

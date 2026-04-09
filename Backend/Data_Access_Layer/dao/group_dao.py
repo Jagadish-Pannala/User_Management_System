@@ -1,6 +1,4 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import or_
 from ..models.models import Permission_Group, Permission_Group_Mapping, Permissions
 from typing import List
 from datetime import datetime
@@ -198,10 +196,10 @@ class PermissionGroupDAO:
             group.roles.clear()  # assuming a relationship 'roles'
             self.db.commit()
 
-    def delete_group(self, group_id: int):
-        group = self.get_group_by_id(group_id)
-        if group:
-            self.db.delete(group)
-            self.db.commit()
-            return True
-        return False
+    # def delete_group(self, group_id: int):
+    #     group = self.get_group_by_id(group_id)
+    #     if group:
+    #         self.db.delete(group)
+    #         self.db.commit()
+    #         return True
+    #     return False

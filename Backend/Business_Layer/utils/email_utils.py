@@ -42,24 +42,24 @@ Hello {name},
 
 Welcome to **Paves Technologies**!
 
-Your intranet account has been successfully created.  
+Your intranet account has been successfully created.
 Please find your login details below:
 
 ----------------------------------------
 **Temporary Password:** {temp_password}
 ----------------------------------------
 
-🔐 **Important:**  
-For security reasons, you must change your password after logging in for the first time.  
+🔐 **Important:**
+For security reasons, you must change your password after logging in for the first time.
 You will not be able to continue using the intranet until your password has been updated.
 
-You can log in and reset your password here:  
+You can log in and reset your password here:
 {FRONTEND_URL}
 
 If you did not expect this email or believe it was sent in error, please contact the system administrator immediately.
 
-Best regards,  
-**User Management Team**  
+Best regards,
+**User Management Team**
 _Paves Technologies_
 """
 

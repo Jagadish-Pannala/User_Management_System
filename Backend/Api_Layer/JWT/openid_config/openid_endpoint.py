@@ -10,11 +10,11 @@ from Backend.Api_Layer.JWT.token_creation.config import get_active_public_key
 from Backend.Business_Layer.utils.jwt_encode import decrypt_key
 
 router = APIRouter()
-## Loading from Json file ##
-# # Static path to JWKS file
+# Loading from Json file
+# Static path to JWKS file
 # JWKS_PATH = Path(__file__).resolve().parent.parent / "token_creation" / "jwks.json"
 
-# # Replace with your actual domain name or environment variable
+# Replace with your actual domain name or environment variable
 # ISSUER = get_env_var("ISSUER")
 
 # @router.get("/.well-known/jwks.json")
@@ -25,7 +25,7 @@ router = APIRouter()
 
 ISSUER = get_env_var("ISSUER")
 
-## Fetching public key from DB ##
+# Fetching public key from DB
 
 
 @router.get("/.well-known/jwks.json")
@@ -64,7 +64,7 @@ def openid_config():
 @router.post("/middleware/check-permission")
 async def permission_check_endpoint(request: Request, data: PermissionCheck):
     try:
-        print(f"✅ POST ENDPOINT HIT!")
+        print("✅ POST ENDPOINT HIT!")
         print(f"📍 Method: {request.method}")
         print(f"📍 Path: {request.url.path}")
         print(f"📍 Client IP: {request.client.host if request.client else 'Unknown'}")
@@ -83,10 +83,10 @@ async def permission_check_endpoint(request: Request, data: PermissionCheck):
         response = check_permission(data.path, data.method, token_data, db_session=db)
 
         if isinstance(response, JSONResponse):
-            print(f"❌ Permission denied")
+            print("❌ Permission denied")
             return response
 
-        print(f"✅ Permission granted")
+        print("✅ Permission granted")
         return {"allowed": True}
 
     except Exception as e:
@@ -101,7 +101,7 @@ async def permission_check_endpoint(request: Request, data: PermissionCheck):
 
 @router.get("/middleware/check-permission")
 async def permission_check_get_handler(request: Request):
-    print(f"❌ GET REQUEST RECEIVED - This endpoint only accepts POST")
+    print("❌ GET REQUEST RECEIVED - This endpoint only accepts POST")
     print(f"📍 Client: {request.client}")
     print(f"📍 Headers: {dict(request.headers)}")
     return JSONResponse(

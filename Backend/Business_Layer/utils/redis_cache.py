@@ -1,7 +1,6 @@
 # Backend/Business_Layer/utils/redis_cache.py
 from .redis_client import get_redis_client
 import json
-import re
 
 ACCESS_POINT_CACHE_PREFIX = "access_point_cache"
 

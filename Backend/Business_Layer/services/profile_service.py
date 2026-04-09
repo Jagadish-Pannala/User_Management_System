@@ -4,7 +4,6 @@ from .base_service import BaseService
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Api_Layer.interfaces.general_user import EditProfile, EditProfileHr
 from ..utils.input_validators import validate_password_strength
-from ...Data_Access_Layer.utils.dependency import get_db
 from sqlalchemy.orm import Session
 
 

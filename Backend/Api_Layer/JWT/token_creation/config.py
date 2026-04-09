@@ -35,7 +35,7 @@ def get_jwt_keys(db=None):
     now = func.now()
     key_record = (
         db.query(JWTKeys)
-        .filter(and_(JWTKeys.is_active == True, JWTKeys.expires_at > now))
+        .filter(and_(JWTKeys.is_active, JWTKeys.expires_at > now))
         .order_by(JWTKeys.created_at.desc())
         .first()
     )
@@ -56,7 +56,7 @@ def get_jwt_keys(db=None):
 
         key_record = (
             db.query(JWTKeys)
-            .filter(JWTKeys.is_active == True)
+            .filter(JWTKeys.is_active)
             .order_by(JWTKeys.created_at.desc())
             .first()
         )
@@ -99,7 +99,7 @@ def get_active_public_key():
             now = func.now()
             key_record = (
                 db.query(JWTKeys)
-                .filter(and_(JWTKeys.is_active == True, JWTKeys.expires_at > now))
+                .filter(and_(JWTKeys.is_active, JWTKeys.expires_at > now))
                 .order_by(JWTKeys.created_at.desc())
                 .first()
             )

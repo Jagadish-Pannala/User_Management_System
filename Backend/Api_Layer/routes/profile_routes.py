@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from typing import List
 
 from ..interfaces.general_user import EditProfile, EditProfileHr
 from ...Business_Layer.services.profile_service import ProfileService

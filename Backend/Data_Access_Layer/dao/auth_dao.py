@@ -23,7 +23,7 @@ class AuthDAO:
     def get_active_user_by_email(self, email: str) -> Optional[models.User]:
         return (
             self.db.query(models.User)
-            .filter(models.User.mail == email, models.User.is_active == True)
+            .filter(models.User.mail == email, models.User.is_active)
             .first()
         )
 
@@ -33,7 +33,7 @@ class AuthDAO:
         # Step 1: Get user
         user = (
             self.db.query(models.User)
-            .filter(models.User.mail == email, models.User.is_active == True)
+            .filter(models.User.mail == email, models.User.is_active)
             .first()
         )
 

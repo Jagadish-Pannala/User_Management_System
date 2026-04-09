@@ -2,8 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, Request
 from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Data_Access_Layer.models import models
-from ...Data_Access_Layer.utils.database import SessionLocal
-from ..utils.password_utils import hash_password, verify_password, check_password_match
+from ..utils.password_utils import hash_password
 from ..utils.email_utils import send_welcome_email
 from ..utils.input_validators import (
     validate_email_format,
@@ -15,10 +14,8 @@ from ..utils.generate_uuid7 import generate_uuid7
 
 # Import the audit decorator
 from ..utils.audit_decorator import audit_action_with_request, _get_ip_address
-from ...Api_Layer.interfaces.user_management import UserBaseIn
 import pandas as pd
 import re
-import asyncio
 from datetime import datetime
 from typing import Optional
 import time
@@ -40,7 +37,7 @@ class UserService:
 
     def list_users(self, page: int, limit: int, search: Optional[str] = None):
         t_start = time.time()
-        print(f"  🟢 START service.list_users")
+        print("  🟢 START service.list_users")
 
         result = self.dao.get_paginated_users(page, limit, search)
 

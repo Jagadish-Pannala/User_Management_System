@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta, timezone
 import jwt
 import time
-from typing import Optional
 from .config import get_jwt_keys
 from Backend.Business_Layer.utils.jwt_encode import decrypt_key
 from Backend.config.env_loader import get_env_var

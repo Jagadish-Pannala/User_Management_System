@@ -1,10 +1,9 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from ...Data_Access_Layer.dao import role_dao, user_dao
+from ...Data_Access_Layer.dao import role_dao
 from ...Api_Layer.interfaces.role_mangement import (
     RoleBase,
     RolePermissionGroupUpdate,
-    RoleGroupRequest,
 )
 from ..utils.generate_uuid7 import generate_uuid7
 from ..utils.audit_decorator import audit_action_with_request

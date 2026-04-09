@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List
 
 from ..interfaces.permissiongroup import (
-    GroupBase,
     GroupOut,
     PermissionInGroupwithId,
     GroupIn,

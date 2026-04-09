@@ -5,7 +5,6 @@ from ...Api_Layer.interfaces.role_mangement import RoleBase
 from fastapi import HTTPException
 from uuid import UUID
 from datetime import datetime
-from functools import lru_cache
 
 
 def get_all_roles(db: Session):

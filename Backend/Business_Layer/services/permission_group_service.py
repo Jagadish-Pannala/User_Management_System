@@ -1,8 +1,5 @@
 from sqlalchemy.orm import Session
 from ...Data_Access_Layer.dao.group_dao import PermissionGroupDAO
-from ...Data_Access_Layer.utils.dependency import (
-    SessionLocal,
-)  # SQLAlchemy session factory
 from fastapi import HTTPException, status
 from ..utils.generate_uuid7 import generate_uuid7
 from ..utils.audit_decorator import audit_action_with_request
@@ -99,7 +96,7 @@ class PermissionGroupService:
         if not group:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Permission group not found",
+                detail="Permission group not found",
             )
 
         # Set entity_id for audit
@@ -138,7 +135,7 @@ class PermissionGroupService:
             "created_by": group.created_by,
             "created_at": str(group.created_at),
         }
-        return {"message": f"Permission group deleted successfully"}
+        return {"message": "Permission group deleted successfully"}
 
     def delete_group_cascade(self, group_uuid: str):
         return self.dao.delete_group_cascade(group_uuid)

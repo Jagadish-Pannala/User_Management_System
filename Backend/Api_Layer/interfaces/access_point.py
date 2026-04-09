@@ -1,7 +1,6 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel
 from typing import Optional, Literal, List
 from uuid import UUID
-from datetime import datetime
 
 # Define all supported HTTP methods
 HttpMethod = Literal[

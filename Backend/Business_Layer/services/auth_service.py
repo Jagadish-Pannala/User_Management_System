@@ -14,7 +14,6 @@ from ...Data_Access_Layer.dao.auth_dao import AuthDAO
 from ...Api_Layer.JWT.token_creation.token_create import token_create
 from ..utils.password_utils import (
     hash_password,
-    check_password_or_raise,
     verify_password,
 )
 from ..utils.input_validators import validate_email_format, validate_password_strength

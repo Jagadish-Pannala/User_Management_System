@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Request, UploadFile, File
 from typing import List
 
 from ..interfaces.access_point import (

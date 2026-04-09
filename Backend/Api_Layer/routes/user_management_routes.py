@@ -1,5 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request, Query
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Query
 from ..interfaces.user_management import (
     UserOut,
     UserRoleUpdate,

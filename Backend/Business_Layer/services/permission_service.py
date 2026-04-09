@@ -1,5 +1,5 @@
 import re
-from fastapi import HTTPException, status, File, UploadFile
+from fastapi import HTTPException, status, UploadFile
 import io
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -52,9 +52,12 @@ class PermissionService:
             if not PERMISSION_CODE_PATTERN.fullmatch(permission_code):
                 raise HTTPException(
                     status_code=400,
-                    detail="Invalid permission code format. Use only uppercase letters and underscores. Example: VIEW_USER_PUBLIC",
+                    detail=(
+                        "Invalid permission code format. "
+                        "Use only uppercase letters and underscores. "
+                        "Example: VIEW_USER_PUBLIC"
+                    ),
                 )
-
             # ✅ Check if permission already exists
             existing = self.dao.get_by_code(permission_code)
             if existing:
@@ -186,7 +189,8 @@ class PermissionService:
                     # Validate format of permission_code
                     if not PERMISSION_CODE_PATTERN.fullmatch(permission_code):
                         failed_entries.append(
-                            f"Row {index + 2} ({permission_code}): Invalid permission code format. Use only uppercase letters and underscores"
+                            f"Row {index + 2} ({permission_code}): Invalid permission code format.\
+                            Use only uppercase letters and underscores"
                         )
                         continue
 
@@ -211,7 +215,7 @@ class PermissionService:
                     )
 
                     # Map permission to group
-                    permission_uuid = self.dao.get_by_id(
+                    self.dao.get_by_id(
                         permission.permission_id
                     ).permission_uuid
                     self.group_dao.add_permissions_to_group(

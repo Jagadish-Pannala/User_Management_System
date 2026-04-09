@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
 from ..models.models import AccessPoint, AccessPointPermission, Permissions
 from typing import Optional, List
 import re
+import logging
 from datetime import datetime
 
 
@@ -161,7 +161,7 @@ class AccessPointDAO:
                 try:
                     self.db.delete(app)
                     self.db.commit()
-                except Exception as e:
+                except Exception:
                     self.db.rollback()
             else:
                 print(f"No mapping found for access_id={access_id}")
@@ -333,7 +333,7 @@ class AccessPointDAO:
         Get permission codes for a specific access point.
         """
         query = text("""
-            SELECT p.permission_code 
+            SELECT p.permission_code
             FROM access_point_permission_mapping appm
             JOIN permissions p ON appm.permission_id = p.permission_id
             WHERE appm.access_id = :access_id
@@ -363,7 +363,7 @@ class AccessPointDAO:
 
             # Check mapping table
             mapping_query = text("""
-                SELECT * FROM access_point_permission_mapping 
+                SELECT * FROM access_point_permission_mapping
                 WHERE access_id = :access_id
             """)
             mappings = self.db.execute(
@@ -396,6 +396,7 @@ class AccessPointDAO:
 
         except Exception as e:
             print(f"   ❌ Error in permissions query: {str(e)}")
+            logger = logging.getLogger(__name__)
             logger.error(
                 f"Error getting permissions for access point {access_id}: {str(e)}"
             )
@@ -444,7 +445,7 @@ class AccessPointDAO:
 
             print("\n   Sample Mappings:")
             sample_mappings = self.db.execute(text("""
-                SELECT appm.*, ap.endpoint_path, ap.method, p.permission_code 
+                SELECT appm.*, ap.endpoint_path, ap.method, p.permission_code
                 FROM Access_Point_Permission_Mapping appm
                 JOIN Access_Point ap ON appm.access_id = ap.access_id
                 JOIN Permissions p ON appm.permission_id = p.permission_id

@@ -5,16 +5,14 @@ File: Data_Access_Layer/dao/user_dao.py
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import or_, not_, distinct
+from sqlalchemy import or_, not_
 from ..models import models
 from typing import Optional, List, Tuple, Dict
 from fastapi import HTTPException
 from datetime import datetime
 import uuid
 from sqlalchemy import func
-from sqlalchemy.orm import load_only
 
-import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,7 +41,7 @@ class UserDAO:
         return self.db.query(models.User).count()
 
     def count_active_users(self) -> int:
-        return self.db.query(models.User).filter(models.User.is_active == True).count()
+        return self.db.query(models.User).filter(models.User.is_active).count()
 
     def get_all_users(self) -> List[models.User]:
         return self.db.query(models.User).all()
@@ -91,7 +89,7 @@ class UserDAO:
         return result
 
     def get_all_active_users(self) -> List[models.User]:
-        return self.db.query(models.User).filter(models.User.is_active == True).all()
+        return self.db.query(models.User).filter(models.User.is_active).all()
 
     def get_users_by_emails(self, emails: List[str]) -> List[str]:
         """
