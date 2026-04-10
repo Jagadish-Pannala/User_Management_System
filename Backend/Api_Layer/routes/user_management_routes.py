@@ -30,7 +30,7 @@ def get_user_service(request: Request) -> UserService:
 # ------------------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------------------
-@router.get("/")
+@router.get("/home")
 def admin_home():
     return {"message": "User Management Route"}
 
@@ -54,6 +54,7 @@ def count_active_users(request: Request):
 # Paginated User List
 # ------------------------------------------------------------------------------
 @router.get("", response_model=PaginatedUserResponse)
+@router.get("/", response_model=PaginatedUserResponse)
 def list_users(
     request: Request,
     page: int = Query(1, ge=1),
@@ -113,9 +114,10 @@ def get_user(user_id: int, request: Request):
 @router.get("/uuid/{user_uuid}", response_model=UserOut_uuid)
 def get_user_uuid(user_uuid: str, request: Request):
     service = get_user_service(request)
-    user = service.get_user_uuid(request.state.user, user_uuid)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        user = service.get_user_uuid(request.state.user, user_uuid)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return user
 
 
@@ -123,6 +125,7 @@ def get_user_uuid(user_uuid: str, request: Request):
 # Create / Bulk Create
 # ------------------------------------------------------------------------------
 @router.post("", response_model=UserOut)
+@router.post("/", response_model=UserOut)
 def create_user(user: UserBaseIn, request: Request):
     service = get_user_service(request)
     try:
@@ -270,6 +273,9 @@ def update_user_roles_uuid(user_uuid: str, payload: UserRoleUpdate, request: Req
 def get_user_roles(user_id: int, request: Request):
     service = get_user_service(request)
     try:
+        user = service.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
         return {"roles": service.get_user_roles(user_id)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -279,6 +285,9 @@ def get_user_roles(user_id: int, request: Request):
 def get_user_roles_uuid(user_uuid: str, request: Request):
     service = get_user_service(request)
     try:
+        user = service.dao.get_user_by_uuid(user_uuid)
+        if not user:
+            raise ValueError("User not found")
         return {"roles": service.get_user_roles_by_uuid(user_uuid)}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

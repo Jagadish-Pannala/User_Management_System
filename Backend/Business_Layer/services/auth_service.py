@@ -4,6 +4,8 @@ import requests
 import time
 import jwt
 from jwt import PyJWKClient
+
+from Backend.Business_Layer.utils.email_utils import send_welcome_email
 from ...Api_Layer.interfaces.auth import (
     RegisterUser,
     LoginUser,
@@ -11,6 +13,8 @@ from ...Api_Layer.interfaces.auth import (
     ChangePasswordFirstLogin,
 )
 from ...Data_Access_Layer.dao.auth_dao import AuthDAO
+from ...Data_Access_Layer.models import models
+from ...Data_Access_Layer.dao.user_dao import UserDAO
 from ...Api_Layer.JWT.token_creation.token_create import token_create
 from ..utils.password_utils import (
     hash_password,
@@ -19,7 +23,7 @@ from ..utils.password_utils import (
 from ..utils.input_validators import validate_email_format, validate_password_strength
 from ...Data_Access_Layer.utils.dependency import get_db  # only used here
 from ...config.env_loader import get_env_var
-
+from ..utils.generate_uuid7 import generate_uuid7
 
 class AuthService:
     """
@@ -27,12 +31,20 @@ class AuthService:
     """
 
     def __init__(self):
-        # Internally create a DB session for each operation
         pass
 
-    def _get_dao(self) -> AuthDAO:
-        db: Session = next(get_db())  # Internal DB session management
+    def _get_db_from_request(self, request: Request | None = None) -> Session:
+        if request is not None and hasattr(request.state, "db"):
+            return request.state.db
+        return next(get_db())
+
+    def _get_dao(self, request: Request | None = None) -> AuthDAO:
+        db: Session = self._get_db_from_request(request)
         return AuthDAO(db)
+
+    def _get_user_dao(self, request: Request | None = None) -> UserDAO:
+        db: Session = self._get_db_from_request(request)
+        return UserDAO(db)
 
     def get_client_ip(self, request: Request):
         """
@@ -47,8 +59,10 @@ class AuthService:
         print("Client IP:", ip)
         return ip
 
-    def register_user(self, user_data: RegisterUser):
-        dao = self._get_dao()
+    def register_user(self, user_data: RegisterUser, request: Request | None = None):
+        dao = self._get_dao(request)
+        user_dao = self._get_user_dao(request)
+        print("mail:", user_data.mail)
 
         validate_email_format(user_data.mail)
         validate_password_strength(user_data.password)
@@ -60,16 +74,37 @@ class AuthService:
             )
 
         hashed_password = hash_password(user_data.password)
-        created_user = dao.create_user(user_data, hashed_password)
+        uuid = generate_uuid7()
+        print("first name :", user_data.first_name)
+        new_user = models.User(
+            first_name=user_data.first_name,
+            last_name=user_data.last_name,
+            mail=user_data.mail,
+            password=hashed_password,
+            user_uuid=uuid,
+            contact=user_data.contact,
+            is_active=user_data.is_active,
+            gender=user_data.gender,
+        )
+        created_user = user_dao.create_user(new_user)
 
-        return {"msg": "User registered successfully", "user_id": created_user.user_id}
+        # send_welcome_email(
+        #     user_data.mail,
+        #     user_data.first_name,
+        #     user_data.password,
+        # )
+
+        return {"msg": "User registered successfully", "user_id": created_user.user_id, "user_uuid": created_user.user_uuid}
 
     def login_user(self, credentials: LoginUser, client_ip: str, request: Request):
-        dao = self._get_dao()
+        dao = self._get_dao(request)
         validate_email_format(credentials.email)
 
         t = time.time()
-        user, roles, permissions = dao.get_user_login_data(credentials.email)
+        results = dao.get_user_login_data(credentials.email)
+        if not results:
+            raise HTTPException(status_code=404, detail="User not found or inactive")
+        user, roles, permissions = results
         print(f"⏱ get_user_login_data: {(time.time()-t)*1000:.1f}ms")
         t = time.time()
 

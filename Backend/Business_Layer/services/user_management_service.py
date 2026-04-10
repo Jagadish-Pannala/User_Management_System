@@ -59,6 +59,8 @@ class UserService:
     def get_user_uuid(self, current_user, user_uuid):
         current_user_roles = current_user["roles"]
         user = self.dao.get_user_by_uuid(user_uuid)
+        if not user:
+            raise ValueError("User not found")
         user_uuid = user.user_uuid
         user_roles = self.get_user_roles_by_uuid(user_uuid)
 
@@ -100,9 +102,9 @@ class UserService:
             password=hashed_password,
             is_active=user_schema.is_active,
         )
-        send_welcome_email(
-            user_schema.mail, user_schema.first_name, user_schema.password
-        )
+        # send_welcome_email(
+        #     user_schema.mail, user_schema.first_name, user_schema.password
+        # )
 
         # Step 1: Create user
         created_user = self.dao.create_user(new_user)
@@ -467,6 +469,8 @@ class UserService:
     def deactivate_user_uuid(self, user_uuid, current_user, **kwargs):
         current_user_roles = current_user["roles"]
         user = self.dao.get_user_by_uuid(user_uuid)
+        if not user:
+            raise ValueError("User not found")
         user_uuid = user.user_uuid
         user_roles = self.get_user_roles_by_uuid(user_uuid)
 
@@ -476,8 +480,6 @@ class UserService:
                 detail="Only Super Admins can delete Super Admin accounts.",
             )
 
-        if not user:
-            raise ValueError("User not found")
         self.dao.deactivate_user(user)
 
     @audit_action_with_request(

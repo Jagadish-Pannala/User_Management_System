@@ -4,10 +4,11 @@ from fastapi import HTTPException, status
 
 def validate_email_format(email: str):
     """Validate the format of the email using regex."""
-    email_regex = r"^[\w\.-]+@[\w\.-]+\.\w{2,}$"  # more flexible TLD length
+    email_regex = r"^[\w.+-]+@[\w.-]+\.\w{2,}$"  # allow plus addressing in local part
     if not re.match(email_regex, email):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email format"
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid email format"
         )
 
 

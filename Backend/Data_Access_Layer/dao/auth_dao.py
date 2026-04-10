@@ -39,7 +39,7 @@ class AuthDAO:
 
         if not user:
             print("User not found in get_user_login_data")
-            return None, [], []
+            return None, None, None
 
         print("user details", user.user_id)
 
@@ -100,19 +100,6 @@ class AuthDAO:
         if user.last_login_at is None or user.password_last_updated is None:
             return True
         return False
-
-    def create_user(self, user_data, hashed_password: str) -> models.User:
-        new_user = models.User(
-            first_name=user_data.first_name,
-            last_name=user_data.last_name,
-            mail=user_data.mail,
-            contact=user_data.contact,
-            password=hashed_password,
-        )
-        self.db.add(new_user)
-        self.db.commit()
-        self.db.refresh(new_user)
-        return new_user
 
     def update_user_password(self, user: models.User, new_hashed_password: str) -> bool:
         try:

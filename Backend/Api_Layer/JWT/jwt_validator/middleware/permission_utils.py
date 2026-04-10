@@ -38,6 +38,11 @@ def check_permission(path: str, method: str, user: dict, db_session=None):
             path, method
         )
         if not access_point:
+            if "Super Admin" in user.get("roles", []):
+                print(
+                    "Bypassing permission check because access point is missing and user is Super Admin"
+                )
+                return None
             return JSONResponse(
                 status_code=403, content={"detail": "Access point not found"}
             )

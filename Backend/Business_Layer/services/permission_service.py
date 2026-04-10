@@ -215,9 +215,7 @@ class PermissionService:
                     )
 
                     # Map permission to group
-                    self.dao.get_by_id(
-                        permission.permission_id
-                    ).permission_uuid
+                    self.dao.get_by_id(permission.permission_id).permission_uuid
                     self.group_dao.add_permissions_to_group(
                         group.group_id, [permission.permission_id], user_id
                     )

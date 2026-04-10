@@ -18,8 +18,8 @@ auth_service = AuthService()
 
 
 @router.post("/register")
-def register(user_data: RegisterUser):
-    return auth_service.register_user(user_data)
+def register(user_data: RegisterUser, request: Request):
+    return auth_service.register_user(user_data, request=request)
 
 
 @router.post("/login")

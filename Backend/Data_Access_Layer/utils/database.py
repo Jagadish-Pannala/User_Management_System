@@ -1,3 +1,4 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -14,7 +15,12 @@ DB_NAME = get_env_var("DB_NAME")
 DB_DRIVER = get_env_var("DB_DRIVER")
 encoded_password = quote_plus(DB_PASSWORD)
 
-DB_URL = f"{DB_DRIVER}://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+if TEST_DATABASE_URL:
+    DB_URL = TEST_DATABASE_URL
+else:
+    DB_URL = f"{DB_DRIVER}://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
 engine = create_engine(
     DB_URL,
     pool_size=15,  # a bit higher base pool
