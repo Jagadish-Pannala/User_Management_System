@@ -50,8 +50,8 @@ pipeline {
             steps {
                 echo "Running code quality checks and tests..."
                 sh '''
-                chmod +x scripts/code_quality/code_quality_check.sh
-                ./scripts/code_quality/code_quality_check.sh
+                chmod +x scripts/quality_check.sh
+                ./scripts/quality_check.sh
                 '''
             }
         }
