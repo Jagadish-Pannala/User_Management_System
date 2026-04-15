@@ -14,8 +14,8 @@ from httpx import AsyncClient
 from sqlalchemy import create_engine, true, text
 from sqlalchemy.orm import sessionmaker
 
-TEST_DATABASE_URL = "mysql+mysqlconnector://root:1234@localhost:3306/user_management"
-os.environ["TEST_DATABASE_URL"] = TEST_DATABASE_URL
+# TEST_DATABASE_URL = "mysql+mysqlconnector://root:1234@localhost:3306/user_management"
+# # os.environ["TEST_DATABASE_URL"] = TEST_DATABASE_URL
 
 from Backend.main import app
 from Backend.Business_Layer.utils.generate_uuid7 import generate_uuid7
@@ -24,7 +24,7 @@ from Backend.Data_Access_Layer.models import models
 from Backend.Data_Access_Layer.utils.database import Base
 from Backend.Data_Access_Layer.utils.dependency import get_db
 
-TEST_DATABASE_URL = "mysql+mysqlconnector://root:1234@localhost:3306/user_management"
+# TEST_DATABASE_URL = "mysql+mysqlconnector://root:1234@localhost:3306/user_management"
 
 
 # ── DB engine ─────────────────────────────────
