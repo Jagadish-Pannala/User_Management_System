@@ -6,11 +6,18 @@ from sqlalchemy import and_
 from sqlalchemy.sql import func
 import time
 import threading
+from Backend.config.env_loader import get_env_var
 
 # ---- Module-level cache ----
 _cached_keys = None
 _cache_expiry = 0
-CACHE_TTL_SECONDS = 300  # re-fetch from DB every 5 minutes
+cache_ttl = get_env_var("CACHE_TTL_MINUTES")
+
+try:
+    minutes = int(cache_ttl)
+    CACHE_TTL_SECONDS = minutes * 60 if minutes > 0 else 300
+except (TypeError, ValueError):
+    CACHE_TTL_SECONDS = 300  # Default to 5 minutes
 
 # For JWKS serving (get_active_public_key)
 _jwks_cached_keys = None
