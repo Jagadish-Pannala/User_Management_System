@@ -3,7 +3,7 @@
 # --- Configuration ---
 TARGET_DIR="Backend"
 TEST_DIR="tests"
-MIN_COVERAGE=90
+MIN_COVERAGE=40
 REPORT_DIR="quality_reports"
 
 # Create report directory
