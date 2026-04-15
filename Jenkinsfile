@@ -50,6 +50,7 @@ pipeline {
             steps {
                 echo "Running code quality checks and tests..."
                 sh '''
+                . ums-venv/bin/activate
                 chmod +x scripts/quality_check.sh
                 ./scripts/quality_check.sh
                 '''
