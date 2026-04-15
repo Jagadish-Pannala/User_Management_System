@@ -15,6 +15,8 @@ redis
 pandas
 jwcrypto
 bcrypt==4.0.1
+autoflake
+isort
 black
 flake8
 ruff
