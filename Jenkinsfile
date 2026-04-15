@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'worker' }
 
     environment {
         IMAGE_NAME = "ums-service"
@@ -15,38 +15,47 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Python Setup/Installation') {
             steps {
-                echo "Building Docker image..."
+                echo "Setting up Python..."
                 sh '''
-                docker build -t $IMAGE_NAME .
+                if ! command -v python3 &> /dev/null
+                then
+                    echo "Python3 not found. Installing..."
+                    sudo apt-get update
+                    sudo apt-get install -y python3 python3-venv python3-pip
+                else
+                    echo "Python3 already installed"
+                fi
+
+                python3 --version
+                pip3 --version
                 '''
             }
         }
 
-        stage('Run Tests (Container)') {
+        stage('Install Dependencies') {
             steps {
-                echo "Running tests inside container..."
+                echo "Installing Python dependencies..."
                 sh '''
-                docker run --rm $IMAGE_NAME pytest || true
+                python3 -m venv ums-venv
+                . ums-venv/bin/activate
+                pip install --upgrade pip
+                pip install -r Backend/requirements.txt
                 '''
             }
         }
 
-        stage('Run Container (Test Deployment)') {
+        stage('Code Quality Check and tests') {
             steps {
-                echo "Stopping old container if exists..."
+                echo "Running code quality checks and tests..."
                 sh '''
-                docker stop $CONTAINER_NAME || true
-                docker rm $CONTAINER_NAME || true
+                chmod +x scripts/code_quality/code_quality_check.sh
+                ./scripts/code_quality/code_quality_check.sh
                 '''
-                
-                // echo "Starting new container..."
-                // sh '''
-                // docker run -d -p 8000:8000 --name $CONTAINER_NAME $IMAGE_NAME
-                // '''
             }
         }
+
     }
 
     post {

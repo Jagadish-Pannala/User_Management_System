@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing import List
 
 from ..interfaces.permissiongroup import (
-    GroupBase,
     GroupOut,
     PermissionInGroupwithId,
-    GroupIn
+    GroupIn,
 )
 from ...Business_Layer.services.permission_group_service import PermissionGroupService
 from ..interfaces.permission_management import PermissionOut
@@ -40,14 +39,13 @@ def admin_home():
 # -------------------------------------------------------
 @router.get("", response_model=List[GroupOut])
 def list_groups(
-    request: Request,
-    keyword: str = Query(default="", description="Search keyword")
+    request: Request, keyword: str = Query(default="", description="Search keyword")
 ):
     service = PermissionGroupService(request.state.db)
-    
+
     if keyword:
         return service.search_groups(keyword)
-    
+
     return service.list_groups()
 
 
@@ -73,9 +71,9 @@ def create_group(group: GroupIn, request: Request):
 
     return service.create_group(
         group.group_name,
-        current_user['user_id'],
+        current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )
 
 
@@ -87,10 +85,7 @@ def update_group(group_uuid: str, group: GroupIn, request: Request):
     service = PermissionGroupService(request.state.db)
 
     updated = service.update_group(
-        group_uuid,
-        group.group_name,
-        request=request,
-        current_user=request.state.user
+        group_uuid, group.group_name, request=request, current_user=request.state.user
     )
 
     if not updated:
@@ -106,7 +101,7 @@ def update_group(group_uuid: str, group: GroupIn, request: Request):
 def delete_group(
     group_uuid: str,
     request: Request,
-    cascade: bool = Query(default=False, description="Delete group and its mappings")
+    cascade: bool = Query(default=False, description="Delete group and its mappings"),
 ):
     service = PermissionGroupService(request.state.db)
 
@@ -114,9 +109,7 @@ def delete_group(
         deleted = service.delete_group_cascade(group_uuid)
     else:
         deleted = service.delete_group(
-            group_uuid,
-            request=request,
-            current_user=request.state.user
+            group_uuid, request=request, current_user=request.state.user
         )
 
     if not deleted:
@@ -142,9 +135,7 @@ def get_permissions_in_group(group_uuid: str, request: Request):
 # -------------------------------------------------------
 @router.post("/{group_uuid}/permissions", response_model=List[PermissionOut])
 def add_permissions_to_group(
-    group_uuid: str,
-    permission_uuids: List[str],
-    request: Request
+    group_uuid: str, permission_uuids: List[str], request: Request
 ):
     service = PermissionGroupService(request.state.db)
     current_user = request.state.user
@@ -152,9 +143,9 @@ def add_permissions_to_group(
     return service.add_permissions_to_group(
         group_uuid,
         permission_uuids,
-        current_user['user_id'],
+        current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )
 
 
@@ -163,21 +154,18 @@ def add_permissions_to_group(
 # -------------------------------------------------------
 @router.delete("/{group_uuid}/permissions", status_code=200)
 def remove_permissions_from_group(
-    group_uuid: str,
-    permission_uuids: List[str],
-    request: Request
+    group_uuid: str, permission_uuids: List[str], request: Request
 ):
     service = PermissionGroupService(request.state.db)
 
     removed = service.remove_permissions_from_group(
-        group_uuid,
-        permission_uuids,
-        request=request,
-        current_user=request.state.user
+        group_uuid, permission_uuids, request=request, current_user=request.state.user
     )
 
     if not removed:
-        raise HTTPException(status_code=404, detail="No matching permission mappings found.")
+        raise HTTPException(
+            status_code=404, detail="No matching permission mappings found."
+        )
 
     return {"message": "Permissions removed successfully"}
 

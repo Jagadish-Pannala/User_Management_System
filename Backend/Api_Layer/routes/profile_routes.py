@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from typing import List
 
 from ..interfaces.general_user import EditProfile, EditProfileHr
 from ...Business_Layer.services.profile_service import ProfileService
@@ -86,6 +85,5 @@ def update_user_by_id(
 
     # Condition 3: Deny access
     raise HTTPException(
-        status_code=403,
-        detail="You are not authorized to edit this profile."
+        status_code=403, detail="You are not authorized to edit this profile."
     )

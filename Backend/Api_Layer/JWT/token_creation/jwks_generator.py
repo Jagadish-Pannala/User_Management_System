@@ -8,7 +8,9 @@ import logging
 from jwcrypto import jwk
 from pathlib import Path
 from Backend.Api_Layer.JWT.token_creation.config import get_jwt_keys
-from Backend.Business_Layer.utils.jwt_encode import decrypt_key  # ✅ Use existing decrypt function
+from Backend.Business_Layer.utils.jwt_encode import (
+    decrypt_key,
+)  # ✅ Use existing decrypt function
 
 
 def generate_jwks():
@@ -28,7 +30,7 @@ def generate_jwks():
 
         # ✅ Add required metadata
         key_dict = json.loads(key.export_public())
-        key_dict["use"] = "sig"   # used for signature verification
+        key_dict["use"] = "sig"  # used for signature verification
         key_dict["alg"] = ALGORITHM
         key_dict["kid"] = KID
 

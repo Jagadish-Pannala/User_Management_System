@@ -3,12 +3,25 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from .Api_Layer.JWT.jwt_validator.middleware.jwt_middleware import JWTMiddleware
-from .Api_Layer.JWT.jwt_validator.middleware.permission_middleware import OptimizedPermissionMiddleware
+from .Api_Layer.JWT.jwt_validator.middleware.permission_middleware import (
+    OptimizedPermissionMiddleware,
+)
 from .Data_Access_Layer.utils.database import engine
 from .Data_Access_Layer.models import models
-from .Api_Layer.routes import auth_routes, profile_routes, permission_group_route, role_management_routes, permission_routes, user_management_routes, access_point_routes, otp_routes
+from .Api_Layer.routes import (
+    auth_routes,
+    profile_routes,
+    permission_group_route,
+    role_management_routes,
+    permission_routes,
+    user_management_routes,
+    access_point_routes,
+    otp_routes,
+)
 from .Api_Layer.JWT.openid_config import openid_endpoint
-from .Api_Layer.JWT.jwt_validator.middleware.db_session_middleware import DBSessionMiddleware
+from .Api_Layer.JWT.jwt_validator.middleware.db_session_middleware import (
+    DBSessionMiddleware,
+)
 
 from .config.env_loader import get_env_var
 
@@ -17,8 +30,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -51,30 +63,36 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
     max_age=3600,
 )
+
+
 @app.middleware("http")
 async def add_timing_middleware(request: Request, call_next):
     t_start = time.time()
     path = request.url.path
     method = request.method
-    
+
     logger.info(f"🚀 REQUEST START: {method} {path}")
-    
+
     response = await call_next(request)
-    
+
     t_end = time.time()
     elapsed = (t_end - t_start) * 1000
-    
+
     # Add header for debugging
     response.headers["X-Response-Time"] = f"{elapsed:.2f}ms"
-    
-    logger.info(f"🏁 REQUEST END: {method} {path} - {elapsed:.2f}ms - Status: {response.status_code}")
-    
+
+    logger.info(
+        f"🏁 REQUEST END: {method} {path} - {elapsed:.2f}ms - Status: {response.status_code}"
+    )
+
     if elapsed > 1000:
         logger.error(f"🔴 VERY SLOW REQUEST: {method} {path} took {elapsed:.2f}ms")
     elif elapsed > 500:
         logger.warning(f"🟠 SLOW REQUEST: {method} {path} took {elapsed:.2f}ms")
-    
+
     return response
+
+
 # @app.on_event("startup")
 # def generate_jwks_on_startup():
 #     from Backend.Api_Layer.JWT.token_creation.jwks_generator import generate_jwks
@@ -83,6 +101,7 @@ async def add_timing_middleware(request: Request, call_next):
 #         print("✅ JWKS file ensured at startup.")
 #     except Exception as e:
 #         print(f"⚠️ Failed to generate JWKS at startup: {e}")
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -94,18 +113,15 @@ def custom_openapi():
         routes=app.routes,
     )
     openapi_schema["components"]["securitySchemes"] = {
-        "BearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT"
-        }
+        "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
     }
     for path in openapi_schema["paths"]:
         for method in openapi_schema["paths"][path]:
-            if method in ["get", "post", "put", "delete","patch"]:
+            if method in ["get", "post", "put", "delete", "patch"]:
                 openapi_schema["paths"][path][method]["security"] = [{"BearerAuth": []}]
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
 
 app.openapi = custom_openapi
 
@@ -113,14 +129,36 @@ app.openapi = custom_openapi
 app.include_router(openid_endpoint.router, prefix="", tags=["Login Management"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Login Management"])
 app.include_router(otp_routes.router, prefix="/auth", tags=["OTP Management"])
-app.include_router(profile_routes.router, prefix="/general_user", tags=["General User Management"])
-app.include_router(user_management_routes.router, prefix="/admin/users", tags=["Admin - User Management"])
-app.include_router(role_management_routes.router, prefix="/admin/roles", tags=["Admin - Role Management"])
-app.include_router(permission_routes.router, prefix="/admin/permissions", tags=["Admin - Permission Management"])
-app.include_router(permission_group_route.router, prefix="/admin/groups", tags=["Admin - Permission Group Management"])
-app.include_router(access_point_routes.router, prefix="/admin/access-points", tags=["Admin - Access Point Management"])
+app.include_router(
+    profile_routes.router, prefix="/general_user", tags=["General User Management"]
+)
+app.include_router(
+    user_management_routes.router,
+    prefix="/admin/users",
+    tags=["Admin - User Management"],
+)
+app.include_router(
+    role_management_routes.router,
+    prefix="/admin/roles",
+    tags=["Admin - Role Management"],
+)
+app.include_router(
+    permission_routes.router,
+    prefix="/admin/permissions",
+    tags=["Admin - Permission Management"],
+)
+app.include_router(
+    permission_group_route.router,
+    prefix="/admin/groups",
+    tags=["Admin - Permission Group Management"],
+)
+app.include_router(
+    access_point_routes.router,
+    prefix="/admin/access-points",
+    tags=["Admin - Access Point Management"],
+)
+
 
 @app.get("/")
 def read_root():
     return {"status": "User Management System API is running"}
-

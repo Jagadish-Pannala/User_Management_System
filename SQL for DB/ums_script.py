@@ -4,32 +4,34 @@ import uuid
 import random
 from datetime import datetime
 
+
 # -------------------------------
 # UUID7 generator for Python 3.9
 # -------------------------------
 def generate_uuid7():
     ts_ms = int(time.time() * 1000) & 0xFFFFFFFFFFFF  # 6 bytes timestamp
-    ts_bytes = ts_ms.to_bytes(6, byteorder='big')
-    rand_bytes = random.getrandbits(80).to_bytes(10, byteorder='big')  # 10 bytes random
+    ts_bytes = ts_ms.to_bytes(6, byteorder="big")
+    rand_bytes = random.getrandbits(80).to_bytes(10, byteorder="big")  # 10 bytes random
     uuid_bytes = ts_bytes + rand_bytes
     return str(uuid.UUID(bytes=uuid_bytes))
+
 
 # -------------------------------
 # Database configs
 # -------------------------------
 OLD_DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'root',
-    'database': 'sample_ums'
+    "host": "localhost",
+    "user": "root",
+    "password": "root",
+    "database": "sample_ums",
 }
 
 NEW_DB_NAME = "dharma"
 
 NEW_DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'root',
+    "host": "localhost",
+    "user": "root",
+    "password": "root",
 }
 
 # -------------------------------
@@ -200,21 +202,24 @@ INSERT INTO User (user_id,user_uuid, first_name, last_name, mail, contact, passw
 VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 for u in users:
-    new_cursor.execute(insert_user, (
-        u['user_id'],
-        generate_uuid7(),
-        u['first_name'],
-        u['last_name'],
-        u['mail'],
-        u['contact'],
-        u['password'],
-        bool(u['is_active']),
-        None,   # password_last_updated
-        None,   # last_login_at
-        None,    # last_login_ip
-        now,     # created_at
-        now
-    ))
+    new_cursor.execute(
+        insert_user,
+        (
+            u["user_id"],
+            generate_uuid7(),
+            u["first_name"],
+            u["last_name"],
+            u["mail"],
+            u["contact"],
+            u["password"],
+            bool(u["is_active"]),
+            None,  # password_last_updated
+            None,  # last_login_at
+            None,  # last_login_ip
+            now,  # created_at
+            now,
+        ),
+    )
 print(f"Migrated {len(users)} users")
 
 # -------------------------------
@@ -224,7 +229,9 @@ old_cursor.execute("SELECT * FROM role")
 roles = old_cursor.fetchall()
 insert_role = "INSERT INTO Role (role_id,role_uuid, role_name, created_at, updated_at) VALUES (%s,%s, %s, %s, %s)"
 for r in roles:
-    new_cursor.execute(insert_role, (r['role_id'],generate_uuid7(), r['role_name'], now, now))
+    new_cursor.execute(
+        insert_role, (r["role_id"], generate_uuid7(), r["role_name"], now, now)
+    )
 print(f"Migrated {len(roles)} roles")
 
 # -------------------------------
@@ -234,7 +241,17 @@ old_cursor.execute("SELECT * FROM permissions")
 perms = old_cursor.fetchall()
 insert_perm = "INSERT INTO Permissions (permission_uuid, permission_id,permission_code, description, created_at, updated_at) VALUES (%s,%s, %s, %s, %s, %s)"
 for p in perms:
-    new_cursor.execute(insert_perm, (generate_uuid7(),p['permission_id'], p['permission_code'], p['description'], now, now))
+    new_cursor.execute(
+        insert_perm,
+        (
+            generate_uuid7(),
+            p["permission_id"],
+            p["permission_code"],
+            p["description"],
+            now,
+            now,
+        ),
+    )
 print(f"Migrated {len(perms)} permissions")
 
 # -------------------------------
@@ -247,18 +264,21 @@ INSERT INTO Access_Point (access_id,access_uuid, endpoint_path, regex_pattern, m
 VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s)
 """
 for ap in aps:
-    new_cursor.execute(insert_ap, (
-        ap['access_id'],
-        generate_uuid7(),
-        ap['endpoint_path'],
-        ap.get('regex_pattern'),
-        ap['method'],
-        ap['module'],
-        bool(ap['is_public']),
-        1,   # created_by
-        now, # created_at
-        now  # updated_at
-    ))
+    new_cursor.execute(
+        insert_ap,
+        (
+            ap["access_id"],
+            generate_uuid7(),
+            ap["endpoint_path"],
+            ap.get("regex_pattern"),
+            ap["method"],
+            ap["module"],
+            bool(ap["is_public"]),
+            1,  # created_by
+            now,  # created_at
+            now,  # updated_at
+        ),
+    )
 print(f"Migrated {len(aps)} access points")
 
 # -------------------------------
@@ -268,8 +288,8 @@ old_cursor.execute("SELECT * FROM user_role")
 user_roles = old_cursor.fetchall()
 insert_ur = "INSERT INTO User_Role (user_id, role_id, assigned_by, assigned_at) VALUES (%s, %s, %s, %s)"
 for ur in user_roles:
-    assigned_by = None if ur['user_id'] == 1 else 1
-    new_cursor.execute(insert_ur, (ur['user_id'], ur['role_id'], assigned_by, now))
+    assigned_by = None if ur["user_id"] == 1 else 1
+    new_cursor.execute(insert_ur, (ur["user_id"], ur["role_id"], assigned_by, now))
 print(f"Migrated {len(user_roles)} user-role mappings")
 
 # -------------------------------
@@ -282,7 +302,7 @@ INSERT INTO Access_Point_Permission_Mapping (access_id, permission_id, assigned_
 VALUES (%s, %s, %s, %s)
 """
 for m in ap_pm:
-    new_cursor.execute(insert_ap_pm, (m['access_id'], m['permission_id'], 1, now))
+    new_cursor.execute(insert_ap_pm, (m["access_id"], m["permission_id"], 1, now))
 print(f"Migrated {len(ap_pm)} access-permission mappings")
 
 # -------------------------------
@@ -292,7 +312,7 @@ old_cursor.execute("SELECT * FROM permission_group")
 groups = old_cursor.fetchall()
 insert_pg = "INSERT INTO Permission_Group (group_uuid, group_name, created_by, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)"
 for g in groups:
-    new_cursor.execute(insert_pg, (generate_uuid7(), g['group_name'], 1, now, now))
+    new_cursor.execute(insert_pg, (generate_uuid7(), g["group_name"], 1, now, now))
 print(f"Migrated {len(groups)} permission groups")
 
 # -------------------------------
@@ -302,7 +322,7 @@ old_cursor.execute("SELECT * FROM role_permission_group")
 rpg = old_cursor.fetchall()
 insert_rpg = "INSERT INTO Role_Permission_Group (role_id, group_id, assigned_by, assigned_at) VALUES (%s, %s, %s, %s)"
 for m in rpg:
-    new_cursor.execute(insert_rpg, (m['role_id'], m['group_id'], 1, now))
+    new_cursor.execute(insert_rpg, (m["role_id"], m["group_id"], 1, now))
 print(f"Migrated {len(rpg)} role-permission group mappings")
 
 # -------------------------------
@@ -315,7 +335,7 @@ INSERT INTO Permission_Group_Mapping (permission_id, group_id, assigned_by, assi
 VALUES (%s, %s, %s, %s)
 """
 for m in pgm:
-    new_cursor.execute(insert_pgm, (m['permission_id'], m['group_id'], 1, now))
+    new_cursor.execute(insert_pgm, (m["permission_id"], m["group_id"], 1, now))
 print(f"Migrated {len(pgm)} permission-group mappings")
 
 # -------------------------------

@@ -9,6 +9,7 @@ BLACKLIST_PREFIX = "blacklist:"
 _local_blacklist: dict[str, float] = {}  # jti -> expiry timestamp
 _last_cleanup = time.time()
 
+
 def _cleanup_local_cache():
     """Remove expired entries from local cache."""
     global _last_cleanup

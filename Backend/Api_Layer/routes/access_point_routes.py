@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Request, UploadFile, File
 from typing import List
 
 from ..interfaces.access_point import (
@@ -7,7 +7,7 @@ from ..interfaces.access_point import (
     AccessPointOut,
     CreateAPResponse,
     PermissionMappingIn,
-    BulkCreateAPResponse
+    BulkCreateAPResponse,
 )
 from ...Business_Layer.services.access_point_service import AccessPointService
 
@@ -55,9 +55,9 @@ def create_ap(data: AccessPointCreate, request: Request):
     current_user = request.state.user
     return service.create_access_point(
         data,
-        created_by_user_id=current_user['user_id'],
+        created_by_user_id=current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )
 
 
@@ -70,9 +70,9 @@ def bulk_create_ap(request: Request, file: UploadFile = File(...)):
     current_user = request.state.user
     return service.bulk_create_access_points(
         file=file,
-        created_by_user_id=current_user['user_id'],
+        created_by_user_id=current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )
 
 
@@ -101,10 +101,7 @@ def get_ap(access_uuid: str, request: Request):
 def update_ap(access_uuid: str, data: AccessPointUpdate, request: Request):
     service = AccessPointService(request.state.db)
     return service.update(
-        access_uuid,
-        data,
-        request=request,
-        current_user=request.state.user
+        access_uuid, data, request=request, current_user=request.state.user
     )
 
 
@@ -114,11 +111,7 @@ def update_ap(access_uuid: str, data: AccessPointUpdate, request: Request):
 @router.delete("/{access_uuid}")
 def delete_ap(access_uuid: str, request: Request):
     service = AccessPointService(request.state.db)
-    return service.delete(
-        access_uuid,
-        request=request,
-        current_user=request.state.user
-    )
+    return service.delete(access_uuid, request=request, current_user=request.state.user)
 
 
 # -------------------------------------------------------
@@ -131,9 +124,9 @@ def map_permission(access_uuid: str, permission_uuid: str, request: Request):
     return service.map_permission(
         access_uuid,
         permission_uuid,
-        current_user['user_id'],
+        current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )
 
 
@@ -145,10 +138,7 @@ def map_permission_bulk(request: Request, file: UploadFile = File(...)):
     service = AccessPointService(request.state.db)
     current_user = request.state.user
     return service.map_permission_bulk(
-        file,
-        current_user['user_id'],
-        request=request,
-        current_user=current_user
+        file, current_user["user_id"], request=request, current_user=current_user
     )
 
 
@@ -159,10 +149,7 @@ def map_permission_bulk(request: Request, file: UploadFile = File(...)):
 def unmap_permission(access_uuid: str, permission_uuid: str, request: Request):
     service = AccessPointService(request.state.db)
     return service.unmap_permission_both(
-        access_uuid,
-        permission_uuid,
-        request=request,
-        current_user=request.state.user
+        access_uuid, permission_uuid, request=request, current_user=request.state.user
     )
 
 
@@ -176,7 +163,7 @@ def map_permission_new(access_uuid: str, data: PermissionMappingIn, request: Req
     return service.map_permission(
         access_uuid,
         data.permission_uuid,
-        current_user['user_id'],
+        current_user["user_id"],
         request=request,
-        current_user=current_user
+        current_user=current_user,
     )

@@ -1,12 +1,13 @@
 # Backend/Business_Layer/utils/redis_cache.py
 from .redis_client import get_redis_client
 import json
-import re
 
 ACCESS_POINT_CACHE_PREFIX = "access_point_cache"
 
+
 def make_cache_key(method: str, path: str) -> str:
     return f"{ACCESS_POINT_CACHE_PREFIX}:{method}:{path}"
+
 
 def get_access_point_from_cache(method: str, path: str):
     """Synchronous - returns None if Redis unavailable"""
@@ -22,6 +23,7 @@ def get_access_point_from_cache(method: str, path: str):
     except Exception:
         return None
 
+
 def set_access_point_cache(method: str, path: str, value: dict):
     """Synchronous - silent fail if Redis unavailable"""
     try:
@@ -33,6 +35,7 @@ def set_access_point_cache(method: str, path: str, value: dict):
     except Exception:
         pass
 
+
 def delete_access_point_cache(method: str, path: str):
     """Synchronous - silent fail if Redis unavailable"""
     try:
@@ -43,6 +46,7 @@ def delete_access_point_cache(method: str, path: str):
         r.delete(key)
     except Exception:
         pass
+
 
 def delete_access_point_cache_by_id(access_id: int):
     print(f"Deleting cache entries for access_id: {access_id}")
@@ -80,8 +84,6 @@ def delete_access_point_cache_by_id(access_id: int):
 
     except Exception as e:
         print(f"❌ Redis deletion failed: {e}")
-        
-        
 
 
 def clear_all_access_point_cache():
