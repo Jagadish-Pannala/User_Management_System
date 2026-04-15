@@ -3,9 +3,10 @@ tests/integration/conftest.py
 """
 
 import os
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
-if TEST_DATABASE_URL:
-    os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+
+from Backend.config.env_loader import get_env_var
+
+
 
 import pytest
 import pytest_asyncio
@@ -25,7 +26,14 @@ from Backend.Data_Access_Layer.utils.database import Base
 from Backend.Data_Access_Layer.utils.dependency import get_db
 
 # TEST_DATABASE_URL = "mysql+mysqlconnector://root:1234@localhost:3306/user_management"
+TEST_USER=get_env_var("TEST_USER")
+TEST_PASSWORD=get_env_var("TEST_PASSWORD")
+TEST_HOST=get_env_var("TEST_HOST")
+TEST_PORT=get_env_var("TEST_PORT")
+TEST_DB_NAME=get_env_var("TEST_DB_NAME")
+TEST_DB_DRIVER=get_env_var("TEST_DB_DRIVER")
 
+TEST_DATABASE_URL = f"{TEST_DB_DRIVER}://{TEST_USER}:{TEST_PASSWORD}@{TEST_HOST}:{TEST_PORT}/{TEST_DB_NAME}"
 
 # ── DB engine ─────────────────────────────────
 
