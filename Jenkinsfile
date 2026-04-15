@@ -46,6 +46,21 @@ pipeline {
             }
         }
 
+        stage('loading environment variables') {
+            steps {
+                echo "Loading environment variables..."
+                sh """
+                aws secretsmanager get-secret-value \
+                    --secret-id intranet/ums/env \
+                    --region ap-south-1 \
+                    --query SecretString \
+                    --output text | jq -r 'to_entries|map("\\(.key)=\\(.value)")|.[]' > Backend/.env
+                """
+            
+                echo "Converted AWS secret JSON → .env file"
+            }
+        }
+
         stage('Code Quality Check and tests') {
             steps {
                 echo "Running code quality checks and tests..."
