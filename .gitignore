@@ -19,3 +19,6 @@ node_modules/
 Frontend/node_modules/
 Front_End/node_modules/
 frontend_intranet/node_modules/
+quality_reports/
+*.coverage
+coverage.xml

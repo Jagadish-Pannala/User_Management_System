@@ -102,9 +102,9 @@ class UserService:
             password=hashed_password,
             is_active=user_schema.is_active,
         )
-        # send_welcome_email(
-        #     user_schema.mail, user_schema.first_name, user_schema.password
-        # )
+        send_welcome_email(
+            user_schema.mail, user_schema.first_name, user_schema.password
+        )
 
         # Step 1: Create user
         created_user = self.dao.create_user(new_user)

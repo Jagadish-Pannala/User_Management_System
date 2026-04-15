@@ -5,7 +5,6 @@ import time
 import jwt
 from jwt import PyJWKClient
 
-from Backend.Business_Layer.utils.email_utils import send_welcome_email
 from ...Api_Layer.interfaces.auth import (
     RegisterUser,
     LoginUser,
@@ -24,6 +23,7 @@ from ..utils.input_validators import validate_email_format, validate_password_st
 from ...Data_Access_Layer.utils.dependency import get_db  # only used here
 from ...config.env_loader import get_env_var
 from ..utils.generate_uuid7 import generate_uuid7
+
 
 class AuthService:
     """
@@ -94,7 +94,11 @@ class AuthService:
         #     user_data.password,
         # )
 
-        return {"msg": "User registered successfully", "user_id": created_user.user_id, "user_uuid": created_user.user_uuid}
+        return {
+            "msg": "User registered successfully",
+            "user_id": created_user.user_id,
+            "user_uuid": created_user.user_uuid,
+        }
 
     def login_user(self, credentials: LoginUser, client_ip: str, request: Request):
         dao = self._get_dao(request)

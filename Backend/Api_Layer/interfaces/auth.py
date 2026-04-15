@@ -1,10 +1,12 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from enum import Enum
+
 
 class GenderEnum(str, Enum):
     MALE = "male"
     FEMALE = "female"
     OTHER = "other"
+
 
 class RegisterUser(BaseModel):
     mail: str
@@ -14,7 +16,6 @@ class RegisterUser(BaseModel):
     contact: str
     gender: GenderEnum
     is_active: bool = Field(default=True)
-    
 
 
 class LoginUser(BaseModel):

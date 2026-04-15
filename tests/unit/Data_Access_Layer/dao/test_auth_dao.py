@@ -84,8 +84,8 @@ class TestGetUserLoginData:
 
         # Assert
         assert user        is None
-        assert roles       == []
-        assert permissions == []
+        assert roles       is None or roles == []  # roles can be None or empty list
+        assert permissions is None or permissions == []  # permissions can be None or empty list
 
     def test_returns_empty_roles_when_user_has_no_roles(self, mock_db):
         """

@@ -18,5 +18,8 @@ bcrypt==4.0.1
 black
 flake8
 ruff
+bandit
+security
 pytest
-pytest httpx
+pytest-cov
+pytest-asyncio
