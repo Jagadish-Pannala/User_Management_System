@@ -122,6 +122,8 @@ class AuthService:
         token_data = {
             "sub": str(user.user_id),
             "user_id": user.user_id,
+            "employee_id": user.employee_id,
+            "user_uuid": user.user_uuid,
             "name": user.first_name + " " + user.last_name,
             "email": user.mail,
             "roles": roles,
@@ -219,6 +221,8 @@ class AuthService:
         token_data = {
             "sub": str(user.user_id),
             "user_id": user.user_id,
+            "employee_id": user.employee_id,
+            "user_uuid": user.user_uuid,
             "name": user.first_name + " " + user.last_name,
             "email": user.mail,
             "roles": roles,

@@ -144,10 +144,11 @@ def create_user(user: UserBaseIn, request: Request):
 async def bulk_create_users(request: Request, file: UploadFile = File(...)):
     service = get_user_service(request)
     try:
+        print("entering routes layer")
         content = await file.read()
         df = pd.read_excel(BytesIO(content))
 
-        required_cols = {"first_name", "last_name", "mail", "contact"}
+        required_cols = {"user_uuid", "first_name", "last_name", "mail", "contact", "employee_id", "Designation", "Department", "Status"}
         if not required_cols.issubset(df.columns):
             raise HTTPException(
                 status_code=400,
