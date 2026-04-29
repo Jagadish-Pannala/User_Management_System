@@ -158,9 +158,9 @@ class UserService:
         def generate_password(first_name, contact):
             contact_str = str(contact)
             return (
-                f"{first_name[:4]}@{contact_str[-4:]}"
+                f"{first_name[:1].upper()+first_name[1:4]}@{contact_str[-4:]}"
                 if len(contact_str) >= 4
-                else f"{first_name[:4]}@0000"
+                else f"{first_name[:1].upper()+first_name[1:4]}@0000"
             )
 
     def create_bulk_user(
@@ -171,74 +171,184 @@ class UserService:
         request: Request = None,
         audit_data: dict = None,
     ):
+        print("entering service layer - bulk_create_users")
+
         """
         Bulk create users from Excel with validation, audit logs, and partial success handling.
         Skips invalid rows and continues with valid ones.
         Returns dict with 'success' and 'failed' results.
         """
 
-        def clean_contact(contact):
-            if pd.isna(contact):
+        def clean_string(value, field_name="value", required=True):
+            """
+            Safely cleans Excel string values like name, mail, designation, department.
+            """
+            if pd.isna(value):
+                if required:
+                    raise ValueError(f"{field_name} is required")
                 return ""
 
-            if isinstance(contact, (float, int)):
-                if contact > 1e11:
-                    contact_str = f"{int(contact):.0f}"
-                else:
-                    contact_str = str(int(contact))
+            value = str(value).strip()
+
+            if required and not value:
+                raise ValueError(f"{field_name} is required")
+
+            return value
+
+        def clean_contact(contact):
+            """
+            Handles Excel contact values safely.
+            Examples:
+            9876543210
+            9876543210.0
+            '+91 98765 43210'
+            """
+            if pd.isna(contact):
+                raise ValueError("Contact number is required")
+
+            if isinstance(contact, float):
+                contact_str = str(int(contact))
+            elif isinstance(contact, int):
+                contact_str = str(contact)
             else:
                 contact_str = str(contact).strip()
 
+            # Remove spaces, +, -, brackets, etc.
             contact_str = re.sub(r"\D", "", contact_str)
 
+            if not contact_str:
+                raise ValueError("Contact number is required")
+
             if len(contact_str) < 10 or len(contact_str) > 15:
-                raise ValueError(f"Invalid or truncated contact number: {contact}")
+                raise ValueError(f"Invalid contact number: {contact}")
 
             return contact_str
 
         def generate_password(first_name, contact):
+            """
+            Password format:
+            First 4 chars from first_name + @ + last 4 digits of contact
+
+            """
+            first_name = str(first_name).strip()
+
+            if not first_name:
+                name_part = "User"
+            else:
+                # Keep alphabets only for password name part
+                name_part = re.sub(r"[^A-Za-z]", "", first_name)
+
+                if not name_part:
+                    name_part = "User"
+
+            # First letter uppercase, remaining lowercase
+            name_part = name_part.capitalize()
+
+            # Ensure minimum 4 chars
+            if len(name_part) < 4:
+                name_part = name_part.ljust(4, "x")
+            else:
+                name_part = name_part[:4]
+
             contact_str = str(contact)
-            return (
-                f"{first_name[:4]}@{contact_str[-4:]}"
-                if len(contact_str) >= 4
-                else f"{first_name[:4]}@0000"
-            )
+            last4 = contact_str[-4:] if len(contact_str) >= 4 else "0000"
+
+            return f"{name_part}@{last4}"
+
+        def parse_status_to_is_active(status):
+            """
+            Converts Excel Status column to boolean.
+            Accepted active values:
+            Active, true, yes, 1
+
+            Accepted inactive values:
+            Inactive, false, no, 0
+            """
+            if pd.isna(status):
+                return True
+
+            status_value = str(status).strip().lower()
+
+            active_values = {"active", "true", "yes", "1", "enabled"}
+            inactive_values = {"inactive", "false", "no", "0", "disabled"}
+
+            if status_value in active_values:
+                return True
+
+            if status_value in inactive_values:
+                return False
+
+            raise ValueError(f"Invalid Status value: {status}")
 
         if audit_data is None:
             audit_data = {}
 
         cleaned_rows = []
         failed_rows = []
+        seen_emails = set()
 
-        # ✅ Step 1: Validate each row and collect valid ones
+        # Step 1: Validate each row
         for index, row in df.iterrows():
-            try:
-                contact = clean_contact(row["contact"])
-                password = generate_password(row["first_name"], contact)
+            row_num = index + 2
 
-                validate_email_format(row["mail"])
-                validate_name(row["first_name"])
-                validate_name(row["last_name"])
+            try:
+                first_name = clean_string(row.get("first_name"), "first_name")
+                last_name = clean_string(row.get("last_name"), "last_name")
+                mail = clean_string(row.get("mail"), "mail").lower()
+                contact = clean_contact(row.get("contact"))
+                employee_id = clean_string(row.get("employee_id"), "employee_id", required=False)
+                designation = clean_string(row.get("Designation"), "Designation", required=False)
+                department = clean_string(row.get("Department"), "Department", required=False)
+                is_active = parse_status_to_is_active(row.get("Status"))
+
+                user_uuid = row.get("user_uuid")
+
+                if pd.isna(user_uuid) or str(user_uuid).strip() == "":
+                    user_uuid = generate_uuid7()
+                else:
+                    user_uuid = str(user_uuid).strip()
+
+                # Duplicate email inside same Excel file
+                if mail in seen_emails:
+                    raise ValueError("Duplicate email found in Excel file")
+
+                seen_emails.add(mail)
+
+                password = generate_password(first_name, contact)
+                print(f"Generated password for row {row_num}: {password}")
+
+                validate_email_format(mail)
+                validate_name(first_name)
+                validate_name(last_name)
                 validate_contact_number(contact)
-                validate_password_strength(password)
 
                 cleaned_rows.append(
                     {
-                        "first_name": row["first_name"],
-                        "last_name": row["last_name"],
-                        "mail": row["mail"],
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "mail": mail,
                         "contact": contact,
                         "password": password,
-                        "row_num": index + 2,
-                        "is_active": row.get("is_active", True),
+                        "row_num": row_num,
+                        "is_active": is_active,
+                        "employee_id": employee_id,
+                        "user_uuid": user_uuid,
+                        "designation": designation,
+                        "department": department,
+                        "status": row.get("Status"),
                     }
                 )
+
             except Exception as e:
                 failed_rows.append(
-                    {"row": index + 2, "mail": row.get("mail", ""), "error": str(e)}
+                    {
+                        "row": row_num,
+                        "mail": row.get("mail", ""),
+                        "error": str(e),
+                    }
                 )
 
-        # ✅ Step 2: If all failed, stop early
+        # Step 2: If all failed
         if not cleaned_rows:
             return {
                 "success": [],
@@ -246,21 +356,28 @@ class UserService:
                 "message": "All rows failed validation.",
             }
 
-        # ✅ Step 3: Filter out already existing users (skip them too)
+        # Step 3: Check already existing users
         existing_emails = self.dao.get_users_by_emails(
             [r["mail"] for r in cleaned_rows]
         )
-        if existing_emails:
-            for r in cleaned_rows[:]:
-                if r["mail"] in existing_emails:
-                    failed_rows.append(
-                        {
-                            "row": r["row_num"],
-                            "mail": r["mail"],
-                            "error": "User already exists",
-                        }
-                    )
-                    cleaned_rows.remove(r)
+
+        existing_emails = {email.lower() for email in existing_emails} if existing_emails else set()
+
+        remaining_rows = []
+
+        for r in cleaned_rows:
+            if r["mail"].lower() in existing_emails:
+                failed_rows.append(
+                    {
+                        "row": r["row_num"],
+                        "mail": r["mail"],
+                        "error": "User already exists",
+                    }
+                )
+            else:
+                remaining_rows.append(r)
+
+        cleaned_rows = remaining_rows
 
         if not cleaned_rows:
             return {
@@ -269,39 +386,49 @@ class UserService:
                 "message": "No valid new users to create.",
             }
 
-        # ✅ Step 4: Continue creating users
+        # Step 4: Get default role
         general_role = self.dao.get_role_by_name("General")
+
         if not general_role:
             raise ValueError("Role 'General' not found")
 
+        # Step 5: Hash passwords
         for r in cleaned_rows:
             r["hashed_password"] = hash_password(r["password"])
 
+        # Step 6: Create user objects
         user_objects = [
             models.User(
-                user_uuid=generate_uuid7(),
+                user_uuid=r["user_uuid"],
                 first_name=r["first_name"],
                 last_name=r["last_name"],
                 mail=r["mail"],
                 contact=r["contact"],
                 password=r["hashed_password"],
                 is_active=r["is_active"],
+                employee_id=r["employee_id"],
+
+                # Add these only if these columns exist in your User model
+                designation=r["designation"],
+                department=r["department"],
             )
             for r in cleaned_rows
         ]
 
         created_users = self.dao.create_users_batch(user_objects)
 
-        # ✅ Step 5: Map roles
+        # Step 7: Map General role
         user_role_mappings = [
             (user.user_id, general_role.role_id, created_by_user_id)
             for user in created_users
         ]
+
         self.dao.map_user_roles_batch(user_role_mappings)
 
-        # ✅ Step 6: Audit logs
+        # Step 8: Audit logs
         ip_address = _get_ip_address(request=request) if request else None
         audit_logs = []
+
         for user in created_users:
             new_data = {
                 "user_id": user.user_id,
@@ -311,9 +438,12 @@ class UserService:
                 "mail": user.mail,
                 "contact": user.contact,
                 "is_active": user.is_active,
+                "employee_id": user.employee_id,
                 "created_at": user.created_at.isoformat() if user.created_at else None,
             }
+
             description = f"Created new user: {user.mail}"
+
             audit_logs.append(
                 models.AuditTrail(
                     user_id=created_by_user_id,
@@ -327,16 +457,21 @@ class UserService:
                     created_at=datetime.utcnow(),
                 )
             )
+
         if audit_logs:
             self.dao.create_audit_logs_batch(audit_logs)
 
-        # ✅ Step 7: Send welcome emails asynchronously
+        # Step 9: Send welcome emails
         for user, row in zip(created_users, cleaned_rows):
             send_welcome_email(user.mail, user.first_name, row["password"])
 
-        # ✅ Step 8: Final summary
+        # Step 10: Final summary
         success_data = [
-            {"row": r["row_num"], "mail": r["mail"], "status": "created"}
+            {
+                "row": r["row_num"],
+                "mail": r["mail"],
+                "status": "created",
+            }
             for r in cleaned_rows
         ]
 
