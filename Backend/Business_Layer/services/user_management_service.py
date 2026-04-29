@@ -171,7 +171,6 @@ class UserService:
         request: Request = None,
         audit_data: dict = None,
     ):
-        print("entering service layer - bulk_create_users")
 
         """
         Bulk create users from Excel with validation, audit logs, and partial success handling.
@@ -297,8 +296,8 @@ class UserService:
                 mail = clean_string(row.get("mail"), "mail").lower()
                 contact = clean_contact(row.get("contact"))
                 employee_id = clean_string(row.get("employee_id"), "employee_id", required=False)
-                designation = clean_string(row.get("Designation"), "Designation", required=False)
-                department = clean_string(row.get("Department"), "Department", required=False)
+                # designation = clean_string(row.get("Designation"), "Designation", required=False)
+                # department = clean_string(row.get("Department"), "Department", required=False)
                 is_active = parse_status_to_is_active(row.get("Status"))
 
                 user_uuid = row.get("user_uuid")
@@ -315,7 +314,7 @@ class UserService:
                 seen_emails.add(mail)
 
                 password = generate_password(first_name, contact)
-                print(f"Generated password for row {row_num}: {password}")
+                # print(f"Generated password for row {row_num}: {password}")
 
                 validate_email_format(mail)
                 validate_name(first_name)
@@ -333,8 +332,8 @@ class UserService:
                         "is_active": is_active,
                         "employee_id": employee_id,
                         "user_uuid": user_uuid,
-                        "designation": designation,
-                        "department": department,
+                        # "designation": designation,
+                        # "department": department,
                         "status": row.get("Status"),
                     }
                 )
@@ -409,8 +408,8 @@ class UserService:
                 employee_id=r["employee_id"],
 
                 # Add these only if these columns exist in your User model
-                designation=r["designation"],
-                department=r["department"],
+                # designation=r["designation"],
+                # department=r["department"],
             )
             for r in cleaned_rows
         ]
