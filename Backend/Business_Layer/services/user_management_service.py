@@ -299,7 +299,8 @@ class UserService:
                 employee_id = clean_string(row.get("employee_id"), "employee_id", required=False)
                 designation = clean_string(row.get("Designation"), "Designation", required=False)
                 department = clean_string(row.get("Department"), "Department", required=False)
-                is_active = parse_status_to_is_active(row.get("Status"))
+                # is_active = parse_status_to_is_active(row.get("Status"))
+                is_active = True
 
                 user_uuid = row.get("user_uuid")
 
